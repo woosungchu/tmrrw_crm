@@ -36,6 +36,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
+    "apps.common.middleware.CompanyContextMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -88,7 +89,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # 로그인 리다이렉트 (django.contrib.auth)
 LOGIN_URL = "/accounts/login/"
-LOGIN_REDIRECT_URL = "/"  # W2 에서 /app/ 대시보드로 변경
+LOGIN_REDIRECT_URL = "/app/"
 LOGOUT_REDIRECT_URL = "/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

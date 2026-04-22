@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}14일 무료 체험 — tmrrwcrm{% endblock %}
+
+{% block content %}
+<section class="max-w-md mx-auto px-4 py-12">
+  <h1 class="text-2xl font-bold mb-2 text-center">14일 무료 체험 시작</h1>
+  <p class="text-sm text-slate-500 mb-6 text-center">결제수단 없이 바로 시작. 체험 종료 전 안내.</p>
+
+  <form method="post" class="space-y-4 bg-white border border-slate-200 rounded-lg p-6">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="rounded bg-rose-50 border border-rose-200 text-rose-700 text-sm p-3">
+      {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    {% for field in form %}
+    <div>
+      <label for="{{ field.id_for_label }}" class="block text-sm font-semibold mb-1">
+        {{ field.label }}{% if field.field.required %}<span class="text-rose-500"> *</span>{% endif %}
+      </label>
+      {{ field }}
+      {% if field.errors %}
+      <p class="text-xs text-rose-600 mt-1">{{ field.errors|join:" / " }}</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    <button type="submit"
+            class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded transition">
+      무료로 시작하기
+    </button>
+  </form>
+
+  <p class="text-center text-sm text-slate-500 mt-4">
+    이미 계정 있으신가요? <a href="{% url 'login' %}" class="text-indigo-600 hover:underline">로그인</a>
+  </p>
+</section>
+{% endblock %}

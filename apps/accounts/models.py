@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
+from apps.common.models import TimestampedModel
 
 
 class UserManager(BaseUserManager):
@@ -58,3 +59,25 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f"{self.name or self.login_id} ({self.role})"
+
+
+class InviteToken(TimestampedModel):
+    company = models.ForeignKey("companies.Company", on_delete=models.CASCADE, related_name="invites")
+    email = models.EmailField()
+    role = models.CharField(max_length=20, choices=User.ROLE_CHOICES)
+    manager = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    invited_by = models.ForeignKey(
+        "accounts.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="sent_invites"
+    )
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Invite({self.email} → {self.company.name}, {self.role})"

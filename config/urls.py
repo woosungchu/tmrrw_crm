@@ -7,6 +7,8 @@ urlpatterns = [
     path('', include('apps.companies.public_urls')),
     # Django 기본 auth URL (login, logout, password_change, password_reset 등)
     path('accounts/', include('django.contrib.auth.urls')),
+    # 로그인 후 공통 (대시보드, 내 정보 등)
+    path('app/', include('apps.accounts.app_urls')),
     # superuser 용 Django admin (내부만 사용 — IP 화이트리스트는 prod 에서)
     path('django-admin/', admin.site.urls),
 ]

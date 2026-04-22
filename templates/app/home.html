@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}대시보드 — tmrrwcrm{% endblock %}
+
+{% block content %}
+<section class="max-w-screen-xl mx-auto px-4 py-12">
+  <div class="bg-white border border-slate-200 rounded-lg p-8">
+    <h1 class="text-2xl font-bold mb-2">환영합니다, {{ user.name|default:user.login_id }}님</h1>
+    <p class="text-slate-600 mb-6">{{ request.company.name|default:"(회사 미설정)" }} · {{ user.get_role_display }}</p>
+
+    <div class="grid md:grid-cols-3 gap-4 text-sm">
+      <div class="bg-slate-50 rounded p-4">
+        <div class="text-slate-500">플랜</div>
+        <div class="font-semibold text-lg">{{ request.company.get_plan_display }}</div>
+      </div>
+      <div class="bg-slate-50 rounded p-4">
+        <div class="text-slate-500">상태</div>
+        <div class="font-semibold text-lg">{{ request.company.get_billing_status_display }}</div>
+      </div>
+      <div class="bg-slate-50 rounded p-4">
+        <div class="text-slate-500">체험 종료</div>
+        <div class="font-semibold text-lg">{{ request.company.trial_end|date:"Y-m-d"|default:"-" }}</div>
+      </div>
+    </div>
+
+    <p class="text-xs text-slate-400 mt-8">
+      W5 에서 실제 대시보드·리드 목록 구현 예정. 현재는 가입·로그인 플로우 검증용 placeholder.
+    </p>
+  </div>
+</section>
+{% endblock %}

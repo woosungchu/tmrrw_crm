@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Django form widgets 의 attrs 에 박은 클래스까지 스캔 */
+@source "../apps/**/*.py";
+@source "../templates/**/*.html";
+
 @font-face {
   font-family: 'Pretendard';
   font-weight: 400;
