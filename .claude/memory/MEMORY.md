@@ -1,2 +1,0 @@
-- [tmrrw_crm project](project_overview.md) — Django+Postgres 전면 재설계 확정. Ground truth: docs/CRM_실행계획_v3.md
-- [Tailwind CSS 재빌드 필수](feedback_tailwind_rebuild.md) — pre-built CSS 구조. 새 유틸리티 클래스 추가 후 반드시 CLI 재빌드

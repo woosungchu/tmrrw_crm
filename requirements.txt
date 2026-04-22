@@ -1,0 +1,5 @@
+Django>=5.1,<5.3
+psycopg[binary]>=3.2
+python-dotenv>=1.0
+django-htmx>=1.21
+gunicorn>=22.0
