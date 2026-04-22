@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}유입 채널 — tmrrwcrm{% endblock %}
+
+{% block content %}
+<section class="max-w-screen-xl mx-auto px-4 py-8">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold">유입 채널</h1>
+    <a href="{% url 'source_create' %}"
+       class="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition">
+      + 새 채널
+    </a>
+  </div>
+
+  {% if sources %}
+  <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50">
+        <tr class="text-left text-slate-500 border-b border-slate-200">
+          <th class="px-4 py-3">채널명</th>
+          <th class="px-4 py-3">상태</th>
+          <th class="px-4 py-3">API 키</th>
+          <th class="px-4 py-3">생성</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sources %}
+        <tr class="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+          <td class="px-4 py-3 font-medium">{{ s.title }}</td>
+          <td class="px-4 py-3">
+            {% if s.is_active %}<span class="text-emerald-600">활성</span>{% else %}<span class="text-slate-400">비활성</span>{% endif %}
+          </td>
+          <td class="px-4 py-3 text-slate-500">{{ s.api_keys.count }}개</td>
+          <td class="px-4 py-3 text-slate-500">{{ s.created_at|date:"Y-m-d" }}</td>
+          <td class="px-4 py-3 text-right">
+            <a href="{% url 'source_detail' pk=s.pk %}" class="text-indigo-600 hover:underline">관리</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="bg-white border border-slate-200 rounded-lg p-12 text-center">
+    <p class="text-slate-500 mb-4">아직 유입 채널이 없습니다.</p>
+    <a href="{% url 'source_create' %}"
+       class="inline-block px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition">
+      첫 채널 만들기
+    </a>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

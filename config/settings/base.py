@@ -25,6 +25,9 @@ INSTALLED_APPS = [
     "apps.common",
     "apps.accounts",
     "apps.companies",
+    "apps.sources",
+    "apps.leads",
+    "apps.public_api",
 ]
 
 MIDDLEWARE = [
