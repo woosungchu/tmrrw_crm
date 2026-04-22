@@ -1,0 +1,2 @@
+- [tmrrw_crm project](project_overview.md) — 서비스 브랜드 미확정, 실행계획 ground truth는 docs/CRM_실행계획_v2.md
+- [Tailwind CSS 재빌드 필수](feedback_tailwind_rebuild.md) — pre-built CSS 구조. 새 유틸리티 클래스 추가 후 반드시 CLI 재빌드
