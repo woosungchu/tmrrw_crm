@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}팀원 초대 — tmrrwcrm{% endblock %}
+
+{% block content %}
+<section class="max-w-screen-xl mx-auto px-4 py-8">
+  <h1 class="text-2xl font-bold mb-6">팀원 초대</h1>
+
+  <div class="grid md:grid-cols-2 gap-8">
+    <!-- 신규 초대 폼 -->
+    <div class="bg-white border border-slate-200 rounded-lg p-6">
+      <h2 class="font-semibold mb-4">새 초대 보내기</h2>
+      <form method="post" class="space-y-4">
+        {% csrf_token %}
+        {% for field in form %}
+        <div>
+          <label for="{{ field.id_for_label }}" class="block text-sm font-semibold mb-1">
+            {{ field.label }}{% if field.field.required %}<span class="text-rose-500"> *</span>{% endif %}
+          </label>
+          {{ field }}
+          {% if field.errors %}
+          <p class="text-xs text-rose-600 mt-1">{{ field.errors|join:" / " }}</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+        <button type="submit"
+                class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded transition">
+          초대 메일 보내기
+        </button>
+      </form>
+    </div>
+
+    <!-- 초대 목록 -->
+    <div class="bg-white border border-slate-200 rounded-lg p-6">
+      <h2 class="font-semibold mb-4">최근 초대 내역</h2>
+      {% if invites %}
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-slate-500 border-b border-slate-200">
+            <th class="py-2">이메일</th>
+            <th class="py-2">역할</th>
+            <th class="py-2">상태</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i in invites %}
+          <tr class="border-b border-slate-100 last:border-0">
+            <td class="py-2">{{ i.email }}</td>
+            <td class="py-2">{{ i.get_role_display }}</td>
+            <td class="py-2">
+              {% if i.consumed_at %}
+                <span class="text-emerald-600">수락 완료</span>
+              {% elif i.expires_at|timesince %}
+                {% now "U" as now_ts %}
+                <span class="text-slate-500">대기중 ~ {{ i.expires_at|date:"m/d" }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-sm text-slate-500">아직 초대 내역 없음.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

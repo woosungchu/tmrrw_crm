@@ -26,6 +26,15 @@
     <p class="text-xs text-slate-400 mt-8">
       W5 에서 실제 대시보드·리드 목록 구현 예정. 현재는 가입·로그인 플로우 검증용 placeholder.
     </p>
+
+    {% if user.role == 'owner' or user.role == 'admin' %}
+    <div class="mt-6">
+      <a href="{% url 'invite_list' %}"
+         class="inline-block px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition">
+        팀원 초대하기 →
+      </a>
+    </div>
+    {% endif %}
   </div>
 </section>
 {% endblock %}
