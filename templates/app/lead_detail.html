@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ lead.name|default:lead.phone }} — tmrrwcrm{% endblock %}
+
+{% block content %}
+<section class="max-w-screen-xl mx-auto px-4 py-8">
+  <nav class="text-sm text-slate-500 mb-2">
+    <a href="{% url 'lead_list' %}" class="hover:text-slate-900">리드</a> · #{{ lead.id }}
+  </nav>
+
+  <div class="flex items-start justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold">{{ lead.name|default:"(이름 없음)" }}</h1>
+      <p class="text-slate-600 font-mono">{{ lead.phone }}</p>
+    </div>
+    <span class="inline-block px-3 py-1 rounded text-sm font-semibold
+                 {% if lead.status == 'new' %}bg-slate-100 text-slate-700
+                 {% elif lead.status == 'contacted' %}bg-indigo-100 text-indigo-700
+                 {% elif lead.status == 'qualified' %}bg-amber-100 text-amber-700
+                 {% elif lead.status == 'negotiating' %}bg-violet-100 text-violet-700
+                 {% elif lead.status == 'won' %}bg-emerald-100 text-emerald-700
+                 {% elif lead.status == 'lost' %}bg-rose-100 text-rose-700{% endif %}">
+      {{ lead.get_status_display }}
+    </span>
+  </div>
+
+  <!-- 액션 바 -->
+  {% if can_edit %}
+  <div class="bg-white border border-slate-200 rounded-lg p-4 mb-6 grid md:grid-cols-2 gap-4">
+    <form method="post" action="{% url 'lead_change_status' pk=lead.pk %}" class="flex gap-2 items-end">
+      {% csrf_token %}
+      <div class="flex-1">
+        <label class="block text-xs font-semibold text-slate-500 mb-1">상태 변경</label>
+        <select name="status" class="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-indigo-500">
+          {% for code, label in status_choices %}
+            <option value="{{ code }}" {% if code == lead.status %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="px-4 py-2 text-sm bg-slate-900 text-white rounded hover:bg-slate-800 transition whitespace-nowrap">저장</button>
+    </form>
+
+    {% if user.role in "owner admin intake" %}
+    <form method="post" action="{% url 'lead_assign' pk=lead.pk %}" class="flex gap-2 items-end">
+      {% csrf_token %}
+      <div class="flex-1">
+        <label class="block text-xs font-semibold text-slate-500 mb-1">담당자 배정</label>
+        <select name="agent_id" class="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-indigo-500">
+          <option value="">(미배정)</option>
+          {% for a in agents %}
+            <option value="{{ a.id }}" {% if a.id == lead.agent_id %}selected{% endif %}>
+              {{ a.name|default:a.login_id }} · {{ a.get_role_display }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="px-4 py-2 text-sm bg-slate-900 text-white rounded hover:bg-slate-800 transition whitespace-nowrap">저장</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="grid md:grid-cols-3 gap-6">
+    <!-- 좌측: 기본 정보 + 커스텀 필드 -->
+    <div class="md:col-span-2 space-y-4">
+      <div class="bg-white border border-slate-200 rounded-lg p-6">
+        <h2 class="font-semibold mb-4 text-slate-900">기본 정보</h2>
+        <dl class="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <dt class="text-slate-500 text-xs">수신 채널</dt>
+            <dd>{{ lead.source.title }}</dd>
+          </div>
+          <div>
+            <dt class="text-slate-500 text-xs">담당자</dt>
+            <dd>{% if lead.agent %}{{ lead.agent.name|default:lead.agent.login_id }}{% else %}미배정{% endif %}</dd>
+          </div>
+          <div>
+            <dt class="text-slate-500 text-xs">접수자</dt>
+            <dd>{% if lead.intake %}{{ lead.intake.name|default:lead.intake.login_id }}{% else %}-{% endif %}</dd>
+          </div>
+          <div>
+            <dt class="text-slate-500 text-xs">수신 일시</dt>
+            <dd>{{ lead.received_at|date:"Y-m-d H:i:s" }}</dd>
+          </div>
+          <div>
+            <dt class="text-slate-500 text-xs">외부 ID</dt>
+            <dd class="font-mono text-xs">{{ lead.external_id|default:"-" }}</dd>
+          </div>
+          <div>
+            <dt class="text-slate-500 text-xs">외부 IP</dt>
+            <dd class="font-mono text-xs">{{ lead.external_ip|default:"-" }}</dd>
+          </div>
+        </dl>
+      </div>
+
+      {% if lead.fields %}
+      <div class="bg-white border border-slate-200 rounded-lg p-6">
+        <h2 class="font-semibold mb-4 text-slate-900">추가 입력 필드</h2>
+        <dl class="grid grid-cols-2 gap-4 text-sm">
+          {% for key, value in lead.fields.items %}
+          <div>
+            <dt class="text-slate-500 text-xs">{{ key }}</dt>
+            <dd>{{ value }}</dd>
+          </div>
+          {% endfor %}
+        </dl>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- 우측: 타임라인 -->
+    <div class="md:col-span-1">
+      <div class="bg-white border border-slate-200 rounded-lg p-6">
+        <h2 class="font-semibold mb-4 text-slate-900">활동 기록</h2>
+        {% if timeline %}
+        <ul class="space-y-3 text-sm">
+          {% for entry in timeline %}
+          <li class="border-l-2 border-slate-200 pl-3">
+            <div class="font-medium text-slate-800">{{ entry.get_type_display }}</div>
+            <div class="text-xs text-slate-500">
+              {{ entry.at|date:"m/d H:i" }}
+              {% if entry.actor %} · {{ entry.actor.name|default:entry.actor.login_id }}{% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-sm text-slate-500">기록 없음.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

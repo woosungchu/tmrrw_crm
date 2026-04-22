@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}리드 — tmrrwcrm{% endblock %}
+
+{% block content %}
+<section class="max-w-screen-xl mx-auto px-4 py-8">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold">리드</h1>
+    <div class="flex gap-2">
+      <a href="{% url 'lead_export' %}?{% if current_status %}status={{ current_status }}&{% endif %}{% if q %}q={{ q }}{% endif %}"
+         class="px-3 py-2 text-sm border border-slate-300 rounded hover:bg-slate-100 transition">엑셀 다운로드</a>
+      {% if can_create %}
+      <a href="{% url 'lead_create' %}"
+         class="px-3 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition">+ 수동 등록</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 상태 탭 -->
+  <div class="flex flex-wrap gap-2 mb-4">
+    <a href="?{% if q %}q={{ q }}{% endif %}"
+       class="px-3 py-1 rounded text-sm font-semibold transition
+              {% if not current_status %}bg-slate-900 text-white{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+      전체 <span class="text-xs opacity-75">{{ total_count }}</span>
+    </a>
+    {% for tab in status_tabs %}
+    <a href="?status={{ tab.code }}{% if q %}&q={{ q }}{% endif %}"
+       class="px-3 py-1 rounded text-sm font-semibold transition
+              {% if current_status == tab.code %}bg-slate-900 text-white{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+      {{ tab.label }} <span class="text-xs opacity-75">{{ tab.count }}</span>
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- 검색 -->
+  <form method="get" class="flex gap-2 mb-4">
+    {% if current_status %}<input type="hidden" name="status" value="{{ current_status }}">{% endif %}
+    <input type="text" name="q" value="{{ q }}" placeholder="이름 또는 전화번호 검색"
+           class="flex-1 max-w-md px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-indigo-500">
+    <button type="submit" class="px-4 py-2 text-sm bg-slate-900 text-white rounded hover:bg-slate-800 transition">검색</button>
+    {% if q %}<a href="?{% if current_status %}status={{ current_status }}{% endif %}" class="px-4 py-2 text-sm border border-slate-300 rounded hover:bg-slate-100">초기화</a>{% endif %}
+  </form>
+
+  <!-- 목록 -->
+  <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+    {% if page.object_list %}
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50">
+        <tr class="text-left text-slate-500 border-b border-slate-200">
+          <th class="px-4 py-3">#</th>
+          <th class="px-4 py-3">이름 / 전화</th>
+          <th class="px-4 py-3">상태</th>
+          <th class="px-4 py-3">채널</th>
+          <th class="px-4 py-3">담당</th>
+          <th class="px-4 py-3">수신</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lead in page.object_list %}
+        <tr class="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+          <td class="px-4 py-3 text-slate-400 text-xs">{{ lead.id }}</td>
+          <td class="px-4 py-3">
+            <a href="{% url 'lead_detail' pk=lead.pk %}" class="font-medium text-slate-900 hover:text-indigo-600">
+              {{ lead.name|default:"(이름 없음)" }}
+            </a>
+            <div class="text-xs text-slate-500 font-mono">{{ lead.phone }}</div>
+          </td>
+          <td class="px-4 py-3">
+            <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold
+                         {% if lead.status == 'new' %}bg-slate-100 text-slate-700
+                         {% elif lead.status == 'contacted' %}bg-indigo-100 text-indigo-700
+                         {% elif lead.status == 'qualified' %}bg-amber-100 text-amber-700
+                         {% elif lead.status == 'negotiating' %}bg-violet-100 text-violet-700
+                         {% elif lead.status == 'won' %}bg-emerald-100 text-emerald-700
+                         {% elif lead.status == 'lost' %}bg-rose-100 text-rose-700{% endif %}">
+              {{ lead.get_status_display }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-slate-600">{{ lead.source.title }}</td>
+          <td class="px-4 py-3 text-slate-600">
+            {% if lead.agent %}{{ lead.agent.name|default:lead.agent.login_id }}{% else %}-{% endif %}
+          </td>
+          <td class="px-4 py-3 text-slate-500 text-xs">{{ lead.received_at|date:"m/d H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="p-12 text-center text-slate-500">리드가 없습니다.</div>
+    {% endif %}
+  </div>
+
+  <!-- 페이지네이션 -->
+  {% if page.paginator.num_pages > 1 %}
+  <div class="flex items-center justify-between mt-4 text-sm">
+    <div class="text-slate-500">
+      {{ page.start_index }}–{{ page.end_index }} / {{ page.paginator.count }}건
+    </div>
+    <div class="flex gap-1">
+      {% if page.has_previous %}
+      <a href="?page={{ page.previous_page_number }}{% if current_status %}&status={{ current_status }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+         class="px-3 py-1 border border-slate-300 rounded hover:bg-slate-100">이전</a>
+      {% endif %}
+      <span class="px-3 py-1">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+      {% if page.has_next %}
+      <a href="?page={{ page.next_page_number }}{% if current_status %}&status={{ current_status }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+         class="px-3 py-1 border border-slate-300 rounded hover:bg-slate-100">다음</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

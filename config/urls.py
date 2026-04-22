@@ -14,6 +14,7 @@ urlpatterns = [
     # 로그인 후 공통 (대시보드, 내 정보 등)
     path('app/', include('apps.accounts.app_urls')),
     path('app/sources/', include('apps.sources.urls')),
+    path('app/leads/', include('apps.leads.urls')),
     # 외부 리드 수신 API
     path('api/v1/', include('apps.public_api.urls')),
     # superuser 용 Django admin (내부만 사용 — IP 화이트리스트는 prod 에서)
