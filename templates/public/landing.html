@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}tmrrwcrm — 콜센터·리드 영업용 CRM{% endblock %}
+
+{% block content %}
+<section class="max-w-screen-xl mx-auto px-4 py-16 md:py-24">
+  <div class="max-w-3xl">
+    <p class="text-sm font-semibold text-indigo-600 mb-3">한국 콜센터·리드 영업 조직을 위한</p>
+    <h1 class="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
+      리드 하나 놓치지 않는<br>
+      <span class="text-indigo-600">실시간 CRM</span>
+    </h1>
+    <p class="mt-6 text-lg text-slate-600 leading-relaxed">
+      접수 → 상담 → 결과까지. 자동 배정 · 중복 감지 · 외부 연동 실패 즉시 알림.
+      수신 API 하나로 어디서 들어오든 놓치지 않습니다.
+    </p>
+    <div class="mt-8 flex gap-3">
+      <a href="/signup/"
+         class="px-6 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition">
+        14일 무료 체험
+      </a>
+      <a href="{% url 'login' %}"
+         class="px-6 py-3 rounded-lg border border-slate-300 hover:border-slate-400 font-semibold transition">
+        로그인
+      </a>
+    </div>
+  </div>
+
+  <div class="mt-16 grid md:grid-cols-3 gap-6">
+    <div class="bg-white rounded-lg border border-slate-200 p-6">
+      <h3 class="font-semibold text-slate-900">자동 배정 엔진</h3>
+      <p class="text-sm text-slate-600 mt-2">
+        요일·시간대·담당자 쿼터 기반. Round-robin 과 부하 분산.
+      </p>
+    </div>
+    <div class="bg-white rounded-lg border border-slate-200 p-6">
+      <h3 class="font-semibold text-slate-900">한 줄 API 연동</h3>
+      <p class="text-sm text-slate-600 mt-2">
+        광고 랜딩 · 자사 웹폼 · 수기 입력 어디서 들어오든 통일된 경로로.
+      </p>
+    </div>
+    <div class="bg-white rounded-lg border border-slate-200 p-6">
+      <h3 class="font-semibold text-slate-900">조직 계층 관리</h3>
+      <p class="text-sm text-slate-600 mt-2">
+        관리자 → 담당자 → 상담사. 계층별 자동 권한과 성과 집계.
+      </p>
+    </div>
+  </div>
+</section>
+{% endblock %}

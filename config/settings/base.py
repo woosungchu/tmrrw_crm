@@ -86,4 +86,9 @@ STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# 로그인 리다이렉트 (django.contrib.auth)
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/"  # W2 에서 /app/ 대시보드로 변경
+LOGOUT_REDIRECT_URL = "/"
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
