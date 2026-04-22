@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}자동 배정 설정 — tmrrwcrm{% endblock %}
+
+{% block content %}
+<section class="max-w-2xl mx-auto px-4 py-8">
+  <h1 class="text-2xl font-bold mb-2">자동 배정 설정</h1>
+  <p class="text-sm text-slate-500 mb-6">
+    켜두면 공개 API 로 들어오는 리드가 운영 시간·요일 조건 맞을 때 상담사에게 자동 배정됩니다.
+  </p>
+
+  <form method="post" class="space-y-6 bg-white border border-slate-200 rounded-lg p-6">
+    {% csrf_token %}
+
+    <!-- auto_on 토글 -->
+    <label class="flex items-start gap-3 cursor-pointer">
+      <input type="checkbox" name="auto_on" {% if form.auto_on.value %}checked{% endif %}
+             class="mt-1 w-4 h-4 accent-indigo-600">
+      <div>
+        <div class="font-semibold text-slate-900">자동 배정 활성화</div>
+        <div class="text-xs text-slate-500">비활성 시 신규 리드는 "미배정" 으로 남음.</div>
+      </div>
+    </label>
+
+    <!-- 요일 -->
+    <div>
+      <div class="font-semibold text-slate-900 mb-2">운영 요일</div>
+      <div class="flex flex-wrap gap-2">
+        {% for value, label in form.weekdays.field.choices %}
+          <label class="inline-flex items-center gap-2 px-3 py-2 border border-slate-300 rounded cursor-pointer hover:bg-slate-50">
+            <input type="checkbox" name="weekdays" value="{{ value }}"
+                   {% if value|stringformat:"s" in form.weekdays.value %}checked{% endif %}
+                   class="w-4 h-4 accent-indigo-600">
+            <span class="text-sm">{{ label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+      {% if form.weekdays.errors %}<p class="text-xs text-rose-600 mt-1">{{ form.weekdays.errors|join:" / " }}</p>{% endif %}
+    </div>
+
+    <!-- 시간 -->
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-semibold text-slate-900 mb-1">시작 시각</label>
+        {{ form.time_start }}
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-900 mb-1">종료 시각</label>
+        {{ form.time_end }}
+      </div>
+    </div>
+
+    <!-- tie_breaker -->
+    <div>
+      <label class="block text-sm font-semibold text-slate-900 mb-1">동률 처리 방식</label>
+      {{ form.tie_breaker }}
+      <p class="text-xs text-slate-500 mt-1">
+        <strong>Round Robin</strong>: ID 순으로 돌아가며. · <strong>Least Loaded</strong>: 오늘 배정 건수가 가장 적은 사람.
+      </p>
+    </div>
+
+    <div class="pt-4 border-t border-slate-200 flex justify-end">
+      <button type="submit" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded transition">
+        저장
+      </button>
+    </div>
+  </form>
+
+  <div class="mt-6 bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs text-slate-600">
+    <p class="font-semibold text-slate-700 mb-1">현재 상태</p>
+    <ul class="space-y-0.5">
+      <li>• 자동 배정: {% if config.auto_on %}<span class="text-emerald-600">ON</span>{% else %}<span class="text-slate-400">OFF</span>{% endif %}</li>
+      <li>• 운영 요일: {{ config.weekdays|default:"(없음)" }}</li>
+      <li>• 운영 시간: {{ config.time_start|time:"H:i" }} ~ {{ config.time_end|time:"H:i" }}</li>
+      <li>• 동률 처리: {{ config.get_tie_breaker_display }}</li>
+      <li>• 마지막 배정 상담사 (RR 커서): {% if config.last_assigned_agent %}{{ config.last_assigned_agent.name|default:config.last_assigned_agent.login_id }}{% else %}(없음){% endif %}</li>
+    </ul>
+  </div>
+</section>
+{% endblock %}

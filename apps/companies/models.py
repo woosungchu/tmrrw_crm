@@ -74,6 +74,11 @@ class AssignmentConfig(TimestampedModel):
     tie_breaker = models.CharField(
         max_length=20, choices=TIE_BREAKER_CHOICES, default="round_robin"
     )
+    last_assigned_agent = models.ForeignKey(
+        "accounts.User", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="+",
+        help_text="round_robin 커서",
+    )
 
     def __str__(self):
         return f"AssignmentConfig({self.company.name})"

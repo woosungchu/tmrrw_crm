@@ -6,6 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from apps.leads.models import Lead, TimelineEntry, phone_to_hash
+from apps.leads.services.assignment import auto_assign
 from .auth import authenticate_bearer
 
 
@@ -65,8 +66,12 @@ def leads_create(request):
         payload={"source_id": source.id, "api_key_prefix": api_key.token_prefix},
     )
 
+    # 자동 배정 시도 (조건 안 맞으면 None, 리드는 그대로 남음)
+    assigned_agent = auto_assign(lead)
+
     return JsonResponse({
         "id": lead.id,
         "status": lead.status,
         "received_at": lead.received_at.isoformat(),
+        "assigned_agent_id": assigned_agent.id if assigned_agent else None,
     }, status=201)
