@@ -12,7 +12,7 @@
 
   <header class="bg-slate-900 text-slate-100">
     <div class="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between">
-      <a href="/" class="text-lg font-semibold tracking-tight">
+      <a href="{% if user.is_authenticated %}/app/{% else %}/{% endif %}" class="text-lg font-semibold tracking-tight">
         <span class="text-indigo-400">tmrrw</span>crm
       </a>
       <nav class="hidden md:flex items-center gap-4 text-sm">

@@ -10,6 +10,9 @@ from .services import create_company_with_owner
 
 
 def landing(request):
+    # 로그인 상태면 바로 대시보드로
+    if request.user.is_authenticated:
+        return redirect('/app/')
     return render(request, 'public/landing.html')
 
 
