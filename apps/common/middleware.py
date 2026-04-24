@@ -1,3 +1,12 @@
+import logging
+
+from django.conf import settings
+from django.http import HttpResponseForbidden
+
+
+logger = logging.getLogger(__name__)
+
+
 class CompanyContextMiddleware:
     """로그인된 유저의 company 를 request 에 자동 주입.
     view 에서 request.company 로 바로 접근 가능."""
@@ -10,3 +19,39 @@ class CompanyContextMiddleware:
         if getattr(request, "user", None) and request.user.is_authenticated:
             request.company = getattr(request.user, "company", None)
         return self.get_response(request)
+
+
+class AdminIPWhitelistMiddleware:
+    """
+    /django-admin/ 경로를 DJANGO_ADMIN_ALLOWED_IPS 에 포함된 IP 에서만 허용.
+
+    - prod.py 에서만 MIDDLEWARE 에 추가됨 (dev 엔 영향 없음).
+    - DJANGO_ADMIN_ALLOWED_IPS 비어있으면 전체 허용 + 로그 경고 (점진 도입 친화).
+    - X-Forwarded-For 의 첫 IP 신뢰 (GAE 프록시 뒤 구조).
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self.prefix = getattr(settings, "DJANGO_ADMIN_URL_PREFIX", "/django-admin/")
+        self.allowed = set(getattr(settings, "DJANGO_ADMIN_ALLOWED_IPS", []) or [])
+        if not self.allowed:
+            logger.warning(
+                "AdminIPWhitelistMiddleware: DJANGO_ADMIN_ALLOWED_IPS 미설정 "
+                "→ %s 경로 전체 허용 중. 프로덕션에선 반드시 설정 권장.",
+                self.prefix,
+            )
+
+    def __call__(self, request):
+        if self.allowed and request.path.startswith(self.prefix):
+            client_ip = self._client_ip(request)
+            if client_ip not in self.allowed:
+                logger.warning("Admin access denied from IP %s", client_ip)
+                return HttpResponseForbidden("Forbidden")
+        return self.get_response(request)
+
+    @staticmethod
+    def _client_ip(request) -> str:
+        xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
+        if xff:
+            return xff.split(",")[0].strip()
+        return request.META.get("REMOTE_ADDR", "")

@@ -10,7 +10,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "insecure-change-me")
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+# dev 에선 dev.py 가 fallback 제공, prod 에선 prod.py 가 raise.
 
 INSTALLED_APPS = [
     "django.contrib.admin",

@@ -1,8 +1,13 @@
 """로컬 개발 환경."""
 from .base import *  # noqa
+from . import base as _base
 
 DEBUG = True
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+
+# dev 편의: SECRET_KEY env 없으면 로컬용 고정 키 사용 (git 에 올라가지 않는 값).
+if not _base.SECRET_KEY:
+    SECRET_KEY = "django-insecure-dev-only-do-not-use-in-production-8f2k3j"
 
 # 로컬 Postgres 는 .env 의 DB_* 값 사용 (base.py 기본)
 
