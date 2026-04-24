@@ -44,7 +44,9 @@ def send_sms(to_phone: str, body: str) -> SmsResult:
     from_phone = os.environ.get("NCP_SENS_FROM_PHONE", "").strip()
 
     if not (access_key and secret_key and service_id and from_phone):
-        logger.info("[DRY SMS] to=%s  body=%r  (NCP_SENS_* env 미설정)", to_phone, body)
+        # dev 친화: print + logger 양쪽 다 씀 (Django 기본 LOGGING 이 INFO 필터링해도 보이게)
+        print(f"[DRY SMS] to={to_phone}  body={body!r}  (NCP_SENS_* env 미설정)", flush=True)
+        logger.warning("[DRY SMS] to=%s  body=%r", to_phone, body)
         return SmsResult(ok=True, provider="dry_run")
 
     uri = f"/sms/v2/services/{service_id}/messages"
