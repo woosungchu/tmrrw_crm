@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -210,9 +211,10 @@ def callback_upcoming_json(request):
 
     now = timezone.now()
     threshold = now + timezone.timedelta(minutes=1)  # 1분 이내 도래
+    # 담당자(agent) 또는 예약자(created_by) 둘 다 알림 대상
     qs = Callback.objects.filter(
+        Q(agent=request.user) | Q(created_by=request.user),
         company=request.company,
-        agent=request.user,
         status="pending",
         reminder_sent=False,
         scheduled_at__lte=threshold,
@@ -231,10 +233,10 @@ def callback_upcoming_json(request):
     if items:
         Callback.objects.filter(pk__in=[i["id"] for i in items]).update(reminder_sent=True)
         # 미처리 상태 업데이트: 예약 지나간 pending 은 missed 로
-    # 1시간+ 이전인데 pending 은 missed 로 정리
+    # 1시간+ 이전인데 pending 은 missed 로 정리 (본인 관련 콜백만)
     Callback.objects.filter(
+        Q(agent=request.user) | Q(created_by=request.user),
         company=request.company,
-        agent=request.user,
         status="pending",
         scheduled_at__lt=now - timezone.timedelta(hours=1),
     ).update(status="missed")
