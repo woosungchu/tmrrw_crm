@@ -15,6 +15,7 @@ urlpatterns = [
     path('app/', include('apps.accounts.app_urls')),
     path('app/sources/', include('apps.sources.urls')),
     path('app/leads/', include('apps.leads.urls')),
+    path('app/', include('apps.communications.urls')),
     path('app/', include('apps.companies.app_urls')),
     # 외부 리드 수신 API
     path('api/v1/', include('apps.public_api.urls')),

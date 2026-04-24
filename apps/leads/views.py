@@ -87,12 +87,23 @@ def lead_detail(request, pk):
         company=request.company, role__in=["agent", "admin", "owner"], is_active=True,
     ).order_by("name")
 
+    # SMS 발송 영역용 데이터
+    import os
+    from apps.communications.models import Template as SmsTemplate
+    sms_templates = SmsTemplate.objects.filter(company=request.company, is_active=True)
+    sms_dry_run = not all(
+        os.environ.get(k) for k in
+        ("NCP_SENS_ACCESS_KEY", "NCP_SENS_SECRET_KEY", "NCP_SENS_SERVICE_ID", "NCP_SENS_FROM_PHONE")
+    )
+
     return render(request, "app/lead_detail.html", {
         "lead": lead,
         "timeline": timeline,
         "agents": agents,
         "status_choices": Lead.STATUS_CHOICES,
         "can_edit": request.user.role in ("owner", "admin", "intake") or lead.agent_id == request.user.id,
+        "sms_templates": sms_templates,
+        "sms_dry_run": sms_dry_run,
     })
 
 
@@ -128,6 +139,25 @@ def lead_change_status(request, pk):
         payload={"from": old_status, "to": new_status},
     )
     messages.success(request, f"상태 변경: {dict(Lead.STATUS_CHOICES).get(old_status)} → {dict(Lead.STATUS_CHOICES).get(new_status)}")
+    return redirect("lead_detail", pk=lead.pk)
+
+
+@login_required
+@require_POST
+def lead_add_memo(request, pk):
+    """lead_detail 하단 메모 입력 → TimelineEntry('memo')."""
+    lead = get_object_or_404(_scope_leads_for_user(request.user, request.company), pk=pk)
+    text = (request.POST.get("text") or "").strip()
+    if not text:
+        messages.error(request, "메모 내용을 입력해주세요.")
+        return redirect("lead_detail", pk=lead.pk)
+    if len(text) > 2000:
+        return HttpResponseForbidden("메모가 너무 깁니다 (최대 2000자).")
+
+    TimelineEntry.objects.create(
+        lead=lead, type="memo", actor=request.user, payload={"text": text},
+    )
+    messages.success(request, "메모 추가됨.")
     return redirect("lead_detail", pk=lead.pk)
 
 

@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if mode == 'edit' %}템플릿 수정{% else %}새 템플릿{% endif %} — tmrrwcrm{% endblock %}
+
+{% block content %}
+<section class="max-w-screen-md mx-auto px-4 py-8">
+  <nav class="text-sm text-slate-500 mb-2">
+    <a href="{% url 'template_list' %}" class="hover:text-slate-900">템플릿</a> ·
+    {% if mode == 'edit' %}수정{% else %}신규{% endif %}
+  </nav>
+  <h1 class="text-2xl font-bold mb-6">
+    {% if mode == 'edit' %}{{ tmpl.title }}{% else %}새 템플릿{% endif %}
+  </h1>
+
+  <form method="post" class="bg-white border border-slate-200 rounded-lg p-6 space-y-4">
+    {% csrf_token %}
+
+    <div>
+      <label class="block text-sm font-semibold mb-1">제목</label>
+      {{ form.title }}
+      {% if form.title.errors %}<p class="text-xs text-rose-600 mt-1">{{ form.title.errors.0 }}</p>{% endif %}
+    </div>
+
+    <div>
+      <label class="block text-sm font-semibold mb-1">채널</label>
+      {{ form.channel }}
+    </div>
+
+    <div>
+      <label class="block text-sm font-semibold mb-1">본문</label>
+      {{ form.body }}
+      <p class="text-xs text-slate-500 mt-1">
+        사용 가능 변수:
+        <code class="bg-slate-100 px-1 rounded">{% verbatim %}{name}{% endverbatim %}</code>
+        <code class="bg-slate-100 px-1 rounded">{% verbatim %}{phone}{% endverbatim %}</code>
+        <code class="bg-slate-100 px-1 rounded">{% verbatim %}{fields.키}{% endverbatim %}</code>
+      </p>
+      {% if form.body.errors %}<p class="text-xs text-rose-600 mt-1">{{ form.body.errors.0 }}</p>{% endif %}
+    </div>
+
+    <label class="flex items-center gap-2 text-sm">
+      {{ form.is_active }} 활성
+    </label>
+
+    <div class="flex justify-between pt-3 border-t">
+      <a href="{% url 'template_list' %}" class="px-4 py-2 text-sm text-slate-600 hover:text-slate-900">취소</a>
+      <button type="submit" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-500">
+        {% if mode == 'edit' %}저장{% else %}생성{% endif %}
+      </button>
+    </div>
+  </form>
+</section>
+{% endblock %}

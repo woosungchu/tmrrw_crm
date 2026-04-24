@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}콜백 — tmrrwcrm{% endblock %}
+
+{% block content %}
+<section class="max-w-screen-xl mx-auto px-4 py-8">
+  <div class="flex items-start justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold">콜백 예약</h1>
+      <p class="text-sm text-slate-500 mt-1">예약 시각에 브라우저 알림을 띄웁니다 (권한 허용 필요).</p>
+    </div>
+    <div class="flex gap-2">
+      <a href="?status=pending" class="px-3 py-1 text-sm rounded {% if status == 'pending' %}bg-slate-900 text-white{% else %}bg-white border border-slate-300 text-slate-700{% endif %}">대기</a>
+      <a href="?status=done" class="px-3 py-1 text-sm rounded {% if status == 'done' %}bg-slate-900 text-white{% else %}bg-white border border-slate-300 text-slate-700{% endif %}">완료</a>
+      <a href="?status=missed" class="px-3 py-1 text-sm rounded {% if status == 'missed' %}bg-slate-900 text-white{% else %}bg-white border border-slate-300 text-slate-700{% endif %}">미처리</a>
+    </div>
+  </div>
+
+  {% if callbacks %}
+  <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-500 text-xs">
+        <tr>
+          <th class="px-4 py-2 text-left">예약 시각</th>
+          <th class="px-4 py-2 text-left">리드</th>
+          <th class="px-4 py-2 text-left">담당자</th>
+          <th class="px-4 py-2 text-left">메모</th>
+          <th class="px-4 py-2"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cb in callbacks %}
+        <tr class="border-t border-slate-100 hover:bg-slate-50">
+          <td class="px-4 py-2 font-mono">{{ cb.scheduled_at|date:"Y-m-d H:i" }}</td>
+          <td class="px-4 py-2">
+            <a href="{% url 'lead_detail' cb.lead.pk %}" class="text-indigo-600 hover:underline">
+              {{ cb.lead.name|default:cb.lead.phone }}
+            </a>
+          </td>
+          <td class="px-4 py-2">{{ cb.agent.name|default:cb.agent.login_id }}</td>
+          <td class="px-4 py-2 text-slate-600">{{ cb.note|truncatechars:50 }}</td>
+          <td class="px-4 py-2 text-right">
+            {% if cb.status == 'pending' %}
+              <form method="post" action="{% url 'callback_done' cb.pk %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="text-emerald-700 hover:underline text-xs">완료</button>
+              </form>
+            {% else %}
+              <span class="text-xs text-slate-400">{{ cb.get_status_display }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="bg-white border border-slate-200 rounded-lg p-12 text-center">
+    <p class="text-slate-500">표시할 콜백이 없습니다.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

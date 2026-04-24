@@ -17,7 +17,11 @@
       </a>
       <nav class="hidden md:flex items-center gap-4 text-sm">
         {% if user.is_authenticated %}
-          <a href="/app/" class="hover:text-white">앱</a>
+          <a href="{% url 'lead_list' %}" class="hover:text-white">리드</a>
+          <a href="{% url 'callback_list' %}" class="hover:text-white">콜백</a>
+          {% if user.role in "owner admin" %}
+            <a href="{% url 'template_list' %}" class="hover:text-white">템플릿</a>
+          {% endif %}
           <span class="text-slate-400">{{ user.name|default:user.login_id }}</span>
           <form action="{% url 'logout' %}" method="post" class="inline">
             {% csrf_token %}
@@ -51,6 +55,44 @@
   <footer class="text-xs text-slate-500 py-6 text-center">
     © 2026 tmrrwcrm
   </footer>
+
+  {% if user.is_authenticated %}
+  <script>
+    // 콜백 예약 브라우저 알림 폴링 (60초마다).
+    (function () {
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'default') {
+        // 사용자 상호작용 필요 — 첫 클릭 시 1회 요청
+        document.addEventListener('click', function handler() {
+          Notification.requestPermission();
+          document.removeEventListener('click', handler);
+        }, { once: true });
+      }
+
+      async function poll() {
+        try {
+          const r = await fetch("{% url 'callback_upcoming_json' %}", { credentials: 'same-origin' });
+          if (!r.ok) return;
+          const data = await r.json();
+          (data.callbacks || []).forEach(cb => {
+            if (Notification.permission === 'granted') {
+              const n = new Notification('콜백 예약: ' + cb.lead_name, {
+                body: (cb.note || '') + ' (' + cb.scheduled_at.substring(11, 16) + ')',
+                tag: 'cb-' + cb.id,
+              });
+              n.onclick = function () {
+                window.focus();
+                window.location.href = '/app/leads/' + cb.lead_id + '/';
+              };
+            }
+          });
+        } catch (e) { /* silent */ }
+      }
+      setInterval(poll, 60000);
+      setTimeout(poll, 5000);  // 페이지 로드 5초 후 첫 polling
+    })();
+  </script>
+  {% endif %}
 
 </body>
 </html>

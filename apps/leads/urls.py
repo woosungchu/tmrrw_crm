@@ -8,4 +8,5 @@ urlpatterns = [
     path("<int:pk>/", views.lead_detail, name="lead_detail"),
     path("<int:pk>/status/", views.lead_change_status, name="lead_change_status"),
     path("<int:pk>/assign/", views.lead_assign, name="lead_assign"),
+    path("<int:pk>/memo/", views.lead_add_memo, name="lead_add_memo"),
 ]

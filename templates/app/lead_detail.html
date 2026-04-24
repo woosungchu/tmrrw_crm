@@ -61,7 +61,7 @@
   {% endif %}
 
   <div class="grid md:grid-cols-3 gap-6">
-    <!-- 좌측: 기본 정보 + 커스텀 필드 -->
+    <!-- 좌측: 기본 정보 + 커스텀 필드 + 액션 -->
     <div class="md:col-span-2 space-y-4">
       <div class="bg-white border border-slate-200 rounded-lg p-6">
         <h2 class="font-semibold mb-4 text-slate-900">기본 정보</h2>
@@ -106,18 +106,111 @@
         </dl>
       </div>
       {% endif %}
+
+      <!-- 메모 -->
+      {% if can_edit %}
+      <div class="bg-white border border-slate-200 rounded-lg p-6">
+        <h2 class="font-semibold mb-3 text-slate-900">메모 추가</h2>
+        <form method="post" action="{% url 'lead_add_memo' pk=lead.pk %}" class="space-y-2">
+          {% csrf_token %}
+          <textarea name="text" rows="3" required maxlength="2000"
+                    class="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-indigo-500"
+                    placeholder="고객 응대 메모 기록…"></textarea>
+          <div class="flex justify-end">
+            <button type="submit" class="px-4 py-2 text-sm bg-slate-900 text-white rounded hover:bg-slate-800">메모 저장</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- SMS 발송 -->
+      {% if lead.phone %}
+      <div class="bg-white border border-slate-200 rounded-lg p-6">
+        <h2 class="font-semibold mb-3 text-slate-900">SMS 발송</h2>
+        <form method="post" action="{% url 'send_sms_to_lead' lead_pk=lead.pk %}" class="space-y-2">
+          {% csrf_token %}
+          <label class="block">
+            <span class="block text-xs text-slate-500 mb-1">템플릿 선택 (선택)</span>
+            <select name="template" class="w-full px-3 py-2 text-sm border border-slate-300 rounded">
+              <option value="">(프리폼)</option>
+              {% for t in sms_templates %}
+                <option value="{{ t.id }}">{{ t.title }} [{{ t.get_channel_display }}]</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="block">
+            <span class="block text-xs text-slate-500 mb-1">본문 (템플릿 미선택 시)</span>
+            <textarea name="body" rows="3" maxlength="2000"
+                      class="w-full px-3 py-2 text-sm border border-slate-300 rounded"
+                      placeholder="{% verbatim %}{name}님, 안녕하세요.{% endverbatim %}"></textarea>
+          </label>
+          <div class="flex justify-between items-center">
+            <p class="text-xs text-slate-500">
+              {% if sms_dry_run %}⚠️ NCP 키 미설정 — 모의 발송 (콘솔 로그만){% else %}실발송됩니다.{% endif %}
+            </p>
+            <button type="submit" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-500">발송</button>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+
+      <!-- 콜백 예약 -->
+      <div class="bg-white border border-slate-200 rounded-lg p-6">
+        <h2 class="font-semibold mb-3 text-slate-900">콜백 예약</h2>
+        <form method="post" action="{% url 'callback_create' lead_pk=lead.pk %}" class="grid md:grid-cols-3 gap-2 items-end">
+          {% csrf_token %}
+          <label class="block">
+            <span class="block text-xs text-slate-500 mb-1">예약 시각</span>
+            <input type="datetime-local" name="scheduled_at" required
+                   class="w-full px-3 py-2 text-sm border border-slate-300 rounded" />
+          </label>
+          <label class="block md:col-span-1">
+            <span class="block text-xs text-slate-500 mb-1">메모</span>
+            <input type="text" name="note" maxlength="200"
+                   class="w-full px-3 py-2 text-sm border border-slate-300 rounded" />
+          </label>
+          <button type="submit" class="px-4 py-2 text-sm bg-slate-900 text-white rounded hover:bg-slate-800">예약</button>
+        </form>
+      </div>
+      {% endif %}
     </div>
 
     <!-- 우측: 타임라인 -->
     <div class="md:col-span-1">
-      <div class="bg-white border border-slate-200 rounded-lg p-6">
+      <div class="bg-white border border-slate-200 rounded-lg p-6 sticky top-4">
         <h2 class="font-semibold mb-4 text-slate-900">활동 기록</h2>
         {% if timeline %}
-        <ul class="space-y-3 text-sm">
+        <ul class="space-y-3 text-sm max-h-[60vh] overflow-y-auto">
           {% for entry in timeline %}
-          <li class="border-l-2 border-slate-200 pl-3">
+          <li class="border-l-2
+                     {% if entry.type == 'memo' %}border-amber-400
+                     {% elif entry.type == 'sms_sent' %}border-indigo-400
+                     {% elif entry.type == 'alimtalk_sent' %}border-indigo-400
+                     {% elif entry.type == 'callback_scheduled' %}border-violet-400
+                     {% elif entry.type == 'status_change' %}border-emerald-400
+                     {% elif entry.type == 'assigned' or entry.type == 'reassigned' %}border-sky-400
+                     {% else %}border-slate-200{% endif %}
+                     pl-3 pb-2">
             <div class="font-medium text-slate-800">{{ entry.get_type_display }}</div>
-            <div class="text-xs text-slate-500">
+
+            {% if entry.type == 'memo' %}
+              <p class="text-slate-700 mt-0.5 whitespace-pre-wrap">{{ entry.payload.text }}</p>
+            {% elif entry.type == 'sms_sent' or entry.type == 'alimtalk_sent' %}
+              <p class="text-slate-700 mt-0.5 whitespace-pre-wrap">{{ entry.payload.body }}</p>
+              {% if not entry.payload.ok %}
+                <p class="text-rose-600 text-xs mt-0.5">실패: {{ entry.payload.error }}</p>
+              {% elif entry.payload.provider == 'dry_run' %}
+                <p class="text-xs text-amber-600 mt-0.5">(모의 발송)</p>
+              {% endif %}
+            {% elif entry.type == 'status_change' %}
+              <p class="text-slate-700 mt-0.5">
+                {{ entry.payload.from }} → <b>{{ entry.payload.to }}</b>
+              </p>
+            {% elif entry.type == 'callback_scheduled' %}
+              <p class="text-slate-700 mt-0.5">{{ entry.payload.scheduled_at|slice:":16" }}</p>
+              {% if entry.payload.note %}<p class="text-slate-600 text-xs mt-0.5">{{ entry.payload.note }}</p>{% endif %}
+            {% endif %}
+
+            <div class="text-xs text-slate-500 mt-0.5">
               {{ entry.at|date:"m/d H:i" }}
               {% if entry.actor %} · {{ entry.actor.name|default:entry.actor.login_id }}{% endif %}
             </div>
