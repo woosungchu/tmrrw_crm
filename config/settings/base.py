@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "apps.sources",
     "apps.leads",
     "apps.communications",
+    "apps.dashboard",
     "apps.public_api",
 ]
 

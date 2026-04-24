@@ -57,6 +57,8 @@
     © 2026 tmrrwcrm
   </footer>
 
+  {% block extra_js %}{% endblock %}
+
   {% if user.is_authenticated %}
   <script>
     // 콜백 예약 브라우저 알림 폴링 (60초마다).

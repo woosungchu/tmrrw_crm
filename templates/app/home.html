@@ -3,50 +3,236 @@
 {% block title %}대시보드 — tmrrwcrm{% endblock %}
 
 {% block content %}
-<section class="max-w-screen-xl mx-auto px-4 py-12">
-  <div class="bg-white border border-slate-200 rounded-lg p-8">
-    <h1 class="text-2xl font-bold mb-2">환영합니다, {{ user.name|default:user.login_id }}님</h1>
-    <p class="text-slate-600 mb-6">{{ request.company.name|default:"(회사 미설정)" }} · {{ user.get_role_display }}</p>
-
-    <div class="grid md:grid-cols-3 gap-4 text-sm">
-      <div class="bg-slate-50 rounded p-4">
-        <div class="text-slate-500">플랜</div>
-        <div class="font-semibold text-lg">{{ request.company.get_plan_display }}</div>
-      </div>
-      <div class="bg-slate-50 rounded p-4">
-        <div class="text-slate-500">상태</div>
-        <div class="font-semibold text-lg">{{ request.company.get_billing_status_display }}</div>
-      </div>
-      <div class="bg-slate-50 rounded p-4">
-        <div class="text-slate-500">체험 종료</div>
-        <div class="font-semibold text-lg">{{ request.company.trial_end|date:"Y-m-d"|default:"-" }}</div>
-      </div>
+<section class="max-w-screen-xl mx-auto px-4 py-8">
+  <div class="flex items-start justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold">대시보드</h1>
+      <p class="text-sm text-slate-500 mt-1">
+        {{ request.company.name }} · {{ user.name|default:user.login_id }} · {{ user.get_role_display }}
+      </p>
     </div>
+    {% if user.role in "owner admin" %}
+    <div class="flex flex-wrap gap-2">
+      <a href="{% url 'source_list' %}" class="px-3 py-1.5 text-xs border border-slate-300 rounded hover:bg-slate-100">채널 관리</a>
+      <a href="{% url 'assignment_settings' %}" class="px-3 py-1.5 text-xs border border-slate-300 rounded hover:bg-slate-100">자동 배정</a>
+      <a href="{% url 'invite_list' %}" class="px-3 py-1.5 text-xs border border-slate-300 rounded hover:bg-slate-100">팀원 초대</a>
+    </div>
+    {% endif %}
+  </div>
 
-    <p class="text-xs text-slate-400 mt-8">
-      W5 에서 실제 대시보드·리드 목록 구현 예정. 현재는 가입·로그인 플로우 검증용 placeholder.
-    </p>
+  {% if no_company %}
+  <div class="bg-white border border-slate-200 rounded-lg p-8 text-center">
+    <p class="text-slate-600 mb-4">회사가 설정되지 않은 계정입니다.</p>
+    <p class="text-sm text-slate-500">관리자가 회사를 지정하거나 신규 가입해주세요.</p>
+  </div>
+  {% else %}
 
-    <div class="mt-6 flex flex-wrap gap-2">
-      <a href="{% url 'lead_list' %}"
-         class="inline-block px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition">
-        리드 목록 →
-      </a>
-      {% if user.role == 'owner' or user.role == 'admin' %}
-      <a href="{% url 'source_list' %}"
-         class="inline-block px-4 py-2 text-sm border border-slate-300 hover:border-slate-400 rounded transition">
-        유입 채널 관리 →
-      </a>
-      <a href="{% url 'assignment_settings' %}"
-         class="inline-block px-4 py-2 text-sm border border-slate-300 hover:border-slate-400 rounded transition">
-        자동 배정 설정 →
-      </a>
-      <a href="{% url 'invite_list' %}"
-         class="inline-block px-4 py-2 text-sm border border-slate-300 hover:border-slate-400 rounded transition">
-        팀원 초대 →
-      </a>
+  <!-- KPI 카드 -->
+  <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
+    <a href="{% url 'lead_list' %}?status=new" class="bg-white border border-slate-200 rounded-lg p-4 hover:border-indigo-400 transition">
+      <div class="text-xs text-slate-500">오늘 신규</div>
+      <div class="text-2xl font-bold text-indigo-600 mt-1">{{ data.kpi.today_new }}</div>
+    </a>
+    <a href="{% url 'lead_list' %}?status=contacted" class="bg-white border border-slate-200 rounded-lg p-4 hover:border-slate-400 transition">
+      <div class="text-xs text-slate-500">진행 중</div>
+      <div class="text-2xl font-bold text-slate-800 mt-1">{{ data.kpi.in_progress }}</div>
+    </a>
+    <a href="{% url 'lead_list' %}?status=won" class="bg-white border border-slate-200 rounded-lg p-4 hover:border-emerald-400 transition">
+      <div class="text-xs text-slate-500">주간 성사</div>
+      <div class="text-2xl font-bold text-emerald-600 mt-1">{{ data.kpi.won_this_week }}</div>
+    </a>
+    <a href="{% url 'lead_list' %}" class="bg-white border border-slate-200 rounded-lg p-4 hover:border-amber-400 transition">
+      <div class="text-xs text-slate-500">미배정</div>
+      <div class="text-2xl font-bold text-amber-600 mt-1">{{ data.kpi.unassigned }}</div>
+    </a>
+    <a href="{% url 'lead_list' %}?noti=failed"
+       class="bg-white border {% if data.kpi.noti_failed %}border-rose-300 bg-rose-50{% else %}border-slate-200{% endif %} rounded-lg p-4 hover:border-rose-400 transition">
+      <div class="text-xs text-slate-500">NOTI 실패</div>
+      <div class="text-2xl font-bold {% if data.kpi.noti_failed %}text-rose-600{% else %}text-slate-400{% endif %} mt-1">
+        {{ data.kpi.noti_failed }}
+      </div>
+    </a>
+    <a href="{% url 'callback_list' %}?status=pending" class="bg-white border border-slate-200 rounded-lg p-4 hover:border-violet-400 transition">
+      <div class="text-xs text-slate-500">콜백 대기</div>
+      <div class="text-2xl font-bold text-violet-600 mt-1">{{ data.kpi.callbacks_pending }}</div>
+    </a>
+  </div>
+
+  <!-- 차트 1: 7일 유입 + 상태 도넛 -->
+  <div class="grid md:grid-cols-2 gap-4 mb-4">
+    <div class="bg-white border border-slate-200 rounded-lg p-5">
+      <h2 class="text-sm font-semibold text-slate-900 mb-2">최근 7일 리드 유입</h2>
+      <div class="h-56"><canvas id="chart-daily"></canvas></div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-lg p-5">
+      <h2 class="text-sm font-semibold text-slate-900 mb-2">상태 분포</h2>
+      <div class="h-56"><canvas id="chart-status"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 차트 2: 채널 / 상담사 -->
+  <div class="grid md:grid-cols-2 gap-4 mb-6">
+    <div class="bg-white border border-slate-200 rounded-lg p-5">
+      <h2 class="text-sm font-semibold text-slate-900 mb-2">채널별 TOP 5</h2>
+      {% if data.source_dist %}
+        <div class="h-48"><canvas id="chart-source"></canvas></div>
+      {% else %}
+        <p class="text-sm text-slate-500 py-12 text-center">데이터 없음</p>
+      {% endif %}
+    </div>
+    <div class="bg-white border border-slate-200 rounded-lg p-5">
+      <h2 class="text-sm font-semibold text-slate-900 mb-2">상담사별 현재 담당 (오픈 리드)</h2>
+      {% if data.agent_dist %}
+        <div class="h-48"><canvas id="chart-agent"></canvas></div>
+      {% else %}
+        <p class="text-sm text-slate-500 py-12 text-center">데이터 없음</p>
       {% endif %}
     </div>
   </div>
+
+  <!-- 최근 리드 10 -->
+  <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+    <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-slate-900">최근 리드</h2>
+      <a href="{% url 'lead_list' %}" class="text-xs text-indigo-600 hover:underline">전체 보기 →</a>
+    </div>
+    {% if data.recent_leads %}
+    <table class="w-full text-sm">
+      <tbody>
+        {% for lead in data.recent_leads %}
+        <tr class="border-t border-slate-100 hover:bg-slate-50">
+          <td class="px-5 py-2">
+            <div class="flex items-center gap-2">
+              {% if lead.noti_status == 'failed' %}
+                <span title="NOTI 실패" class="inline-block w-2 h-2 rounded-full bg-rose-500"></span>
+              {% endif %}
+              <a href="{% url 'lead_detail' lead.pk %}" class="font-medium text-slate-900 hover:text-indigo-600">
+                {{ lead.name|default:"(이름 없음)" }}
+              </a>
+            </div>
+            <div class="text-xs text-slate-500 font-mono">{{ lead.phone }}</div>
+          </td>
+          <td class="px-5 py-2">
+            <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold
+                         {% if lead.status == 'new' %}bg-slate-100 text-slate-700
+                         {% elif lead.status == 'contacted' %}bg-indigo-100 text-indigo-700
+                         {% elif lead.status == 'qualified' %}bg-amber-100 text-amber-700
+                         {% elif lead.status == 'negotiating' %}bg-violet-100 text-violet-700
+                         {% elif lead.status == 'won' %}bg-emerald-100 text-emerald-700
+                         {% elif lead.status == 'lost' %}bg-rose-100 text-rose-700{% endif %}">
+              {{ lead.get_status_display }}
+            </span>
+          </td>
+          <td class="px-5 py-2 text-slate-600 text-xs">{{ lead.source.title }}</td>
+          <td class="px-5 py-2 text-slate-600 text-xs">
+            {% if lead.agent %}{{ lead.agent.name|default:lead.agent.login_id }}{% else %}-{% endif %}
+          </td>
+          <td class="px-5 py-2 text-slate-500 text-xs">{{ lead.received_at|date:"m/d H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-sm text-slate-500 py-8 text-center">아직 리드가 없습니다.</p>
+    {% endif %}
+  </div>
+  {% endif %}
 </section>
+{% endblock %}
+
+{% block extra_js %}
+{% if not no_company %}
+{{ data.daily_series|json_script:"data-daily" }}
+{{ data.status_dist|json_script:"data-status" }}
+{{ data.source_dist|json_script:"data-source" }}
+{{ data.agent_dist|json_script:"data-agent" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  (function () {
+    const STATUS_COLORS = {
+      'new': '#64748b', 'contacted': '#6366f1', 'qualified': '#f59e0b',
+      'negotiating': '#8b5cf6', 'won': '#10b981', 'lost': '#f43f5e'
+    };
+    Chart.defaults.font.family = 'ui-sans-serif, system-ui, -apple-system';
+    Chart.defaults.color = '#64748b';
+
+    const pick = id => JSON.parse(document.getElementById(id).textContent);
+    const dailyData  = pick('data-daily');
+    const statusDist = pick('data-status');
+    const sourceDist = pick('data-source');
+    const agentDist  = pick('data-agent');
+
+    if (document.getElementById('chart-daily')) {
+      new Chart(document.getElementById('chart-daily'), {
+        type: 'line',
+        data: {
+          labels: dailyData.map(x => x.date.slice(5)),
+          datasets: [{
+            label: '신규 리드',
+            data: dailyData.map(x => x.count),
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99,102,241,0.12)',
+            tension: 0.3, fill: true, pointRadius: 3,
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false,
+          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    if (document.getElementById('chart-status')) {
+      new Chart(document.getElementById('chart-status'), {
+        type: 'doughnut',
+        data: {
+          labels: statusDist.map(x => x.label),
+          datasets: [{
+            data: statusDist.map(x => x.count),
+            backgroundColor: statusDist.map(x => STATUS_COLORS[x.code] || '#94a3b8'),
+            borderWidth: 0,
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } }
+        }
+      });
+    }
+
+    if (document.getElementById('chart-source') && sourceDist.length) {
+      new Chart(document.getElementById('chart-source'), {
+        type: 'bar',
+        data: {
+          labels: sourceDist.map(x => x.source__title || '(미상)'),
+          datasets: [{
+            label: '리드 수', data: sourceDist.map(x => x.n),
+            backgroundColor: '#6366f1'
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+          scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    if (document.getElementById('chart-agent') && agentDist.length) {
+      new Chart(document.getElementById('chart-agent'), {
+        type: 'bar',
+        data: {
+          labels: agentDist.map(x => x.agent__name || x.agent__login_id || '(미배정)'),
+          datasets: [{
+            label: '현재 담당', data: agentDist.map(x => x.n),
+            backgroundColor: '#10b981'
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+          scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+  })();
+</script>
+{% endif %}
 {% endblock %}

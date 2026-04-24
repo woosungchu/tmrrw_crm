@@ -15,8 +15,13 @@ def _can_invite(user):
 
 @login_required
 def app_home(request):
-    """로그인 후 랜딩. W5 전까지 placeholder."""
-    return render(request, 'app/home.html')
+    """로그인 후 랜딩 = 대시보드."""
+    from apps.dashboard.services import compute_dashboard
+    if not request.company:
+        messages.warning(request, "회사가 설정되지 않은 계정입니다.")
+        return render(request, 'app/home.html', {"no_company": True})
+    data = compute_dashboard(request.user, request.company)
+    return render(request, 'app/home.html', {"data": data})
 
 
 @login_required
