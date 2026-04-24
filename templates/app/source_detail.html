@@ -35,6 +35,10 @@
           <dd class="font-mono text-xs">{{ source.tmrw_form_id|default:"(없음)" }}</dd>
         </div>
         <div>
+          <dt class="text-slate-500">NOTI Webhook</dt>
+          <dd class="font-mono text-xs break-all">{{ source.noti_webhook_url|default:"(비활성)" }}</dd>
+        </div>
+        <div>
           <dt class="text-slate-500">생성</dt>
           <dd>{{ source.created_at|date:"Y-m-d H:i" }}</dd>
         </div>

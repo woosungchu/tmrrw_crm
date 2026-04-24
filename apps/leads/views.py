@@ -14,6 +14,7 @@ from django.views.decorators.http import require_POST
 from apps.accounts.models import User
 from .forms import LeadManualForm, BlacklistManualForm
 from .models import Lead, TimelineEntry, Blacklist, phone_to_hash, phone_to_masked
+from .services.noti import retry_noti, clear_noti_failure
 
 
 def _scope_leads_for_user(user, company):
@@ -43,6 +44,10 @@ def lead_list(request):
     if status:
         qs = qs.filter(status=status)
 
+    noti_filter = request.GET.get("noti", "")
+    if noti_filter == "failed":
+        qs = qs.filter(noti_status="failed")
+
     q = request.GET.get("q", "").strip()
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(phone__icontains=q))
@@ -60,6 +65,9 @@ def lead_list(request):
         for code, label in Lead.STATUS_CHOICES
     ]
 
+    # NOTI 실패 건수 (배너/필터 링크용)
+    noti_failed_count = full_scope.filter(noti_status="failed").count()
+
     return render(request, "app/leads_list.html", {
         "page": page,
         "status_tabs": status_tabs,
@@ -67,6 +75,8 @@ def lead_list(request):
         "current_status": status,
         "q": q,
         "can_create": _can_manual_create(request.user),
+        "noti_failed_count": noti_failed_count,
+        "noti_filter": noti_filter,
     })
 
 
@@ -242,6 +252,38 @@ def lead_create(request):
         form = LeadManualForm(company=request.company)
 
     return render(request, "app/lead_form.html", {"form": form})
+
+
+# ─────────── NOTI 재시도/조치 ─────────────────────────────
+def _can_manage_noti(user):
+    return user.role in ("owner", "admin")
+
+
+@login_required
+@require_POST
+def lead_noti_retry(request, pk):
+    if not _can_manage_noti(request.user):
+        return HttpResponseForbidden("권한 없음")
+    lead = get_object_or_404(_scope_leads_for_user(request.user, request.company), pk=pk)
+    result = retry_noti(lead)
+    if result is None:
+        messages.info(request, "NOTI 설정 없음 (Source 에 webhook 미등록).")
+    elif result:
+        messages.success(request, "NOTI 재발송 성공.")
+    else:
+        messages.error(request, f"재발송 실패: {lead.noti_last_error}")
+    return redirect("lead_detail", pk=lead.pk)
+
+
+@login_required
+@require_POST
+def lead_noti_clear(request, pk):
+    if not _can_manage_noti(request.user):
+        return HttpResponseForbidden("권한 없음")
+    lead = get_object_or_404(_scope_leads_for_user(request.user, request.company), pk=pk)
+    clear_noti_failure(lead, actor=request.user)
+    messages.success(request, "NOTI 조치완료 처리됨.")
+    return redirect("lead_detail", pk=lead.pk)
 
 
 # ─────────── 블랙리스트 ───────────────────────────────────

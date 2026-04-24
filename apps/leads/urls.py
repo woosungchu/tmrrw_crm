@@ -10,6 +10,8 @@ urlpatterns = [
     path("<int:pk>/assign/", views.lead_assign, name="lead_assign"),
     path("<int:pk>/memo/", views.lead_add_memo, name="lead_add_memo"),
     path("<int:pk>/blacklist/", views.lead_add_to_blacklist, name="lead_add_to_blacklist"),
+    path("<int:pk>/noti/retry/", views.lead_noti_retry, name="lead_noti_retry"),
+    path("<int:pk>/noti/clear/", views.lead_noti_clear, name="lead_noti_clear"),
     # Blacklist 관리
     path("blacklist/", views.blacklist_list, name="blacklist_list"),
     path("blacklist/new/", views.blacklist_create_manual, name="blacklist_create_manual"),

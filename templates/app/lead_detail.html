@@ -24,6 +24,40 @@
     </span>
   </div>
 
+  <!-- NOTI 상태 배너 -->
+  {% if lead.noti_status == 'failed' %}
+  <div class="mb-4 bg-rose-50 border border-rose-200 rounded-lg px-4 py-3 flex items-center justify-between">
+    <div class="text-sm text-rose-800">
+      <div class="flex items-center gap-2 font-semibold">
+        <span class="inline-block w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+        NOTI 발송 실패
+      </div>
+      <p class="text-xs text-rose-700 mt-1 font-mono">{{ lead.noti_last_error }}</p>
+    </div>
+    {% if user.role in "owner admin" %}
+    <div class="flex gap-2">
+      <form method="post" action="{% url 'lead_noti_retry' pk=lead.pk %}" class="inline">
+        {% csrf_token %}
+        <button type="submit" class="px-3 py-1 text-xs bg-rose-600 text-white rounded hover:bg-rose-500">재시도</button>
+      </form>
+      <form method="post" action="{% url 'lead_noti_clear' pk=lead.pk %}" class="inline"
+            onsubmit="return confirm('실패 상태를 수동으로 조치완료 처리합니다.');">
+        {% csrf_token %}
+        <button type="submit" class="px-3 py-1 text-xs border border-rose-300 text-rose-700 rounded hover:bg-rose-100">조치완료 표시</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% elif lead.noti_status == 'failed_cleared' %}
+  <div class="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-sm text-amber-800">
+    NOTI 조치완료 (수동 처리됨)
+  </div>
+  {% elif lead.noti_status == 'ok' %}
+  <div class="mb-4 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2 text-sm text-emerald-800">
+    NOTI 발송 완료
+  </div>
+  {% endif %}
+
   <!-- 액션 바 -->
   {% if can_edit %}
   <div class="bg-white border border-slate-200 rounded-lg p-4 mb-6 grid md:grid-cols-2 gap-4">
@@ -210,6 +244,8 @@
                      {% elif entry.type == 'status_change' %}border-emerald-400
                      {% elif entry.type == 'assigned' or entry.type == 'reassigned' %}border-sky-400
                      {% elif entry.type == 'blacklisted' or entry.type == 'blacklist_hit' %}border-rose-500
+                     {% elif entry.type == 'noti_sent' %}border-emerald-300
+                     {% elif entry.type == 'noti_failed' %}border-rose-400
                      {% else %}border-slate-200{% endif %}
                      pl-3 pb-2">
             <div class="font-medium text-slate-800">{{ entry.get_type_display }}</div>
@@ -238,6 +274,14 @@
             {% elif entry.type == 'blacklist_hit' %}
               <p class="text-rose-700 mt-0.5">{{ entry.payload.phone_masked }}</p>
               <p class="text-xs text-slate-500 mt-0.5">공개 API 수신 → 블랙리스트 일치 → 자동 실패</p>
+            {% elif entry.type == 'noti_sent' %}
+              <p class="text-xs text-emerald-700 mt-0.5">HTTP {{ entry.payload.status_code }}</p>
+            {% elif entry.type == 'noti_failed' %}
+              {% if entry.payload.note == 'manual_clear' %}
+                <p class="text-xs text-amber-700 mt-0.5">수동 조치완료 표시</p>
+              {% else %}
+                <p class="text-xs text-rose-700 mt-0.5 font-mono">{{ entry.payload.error }}</p>
+              {% endif %}
             {% endif %}
 
             <div class="text-xs text-slate-500 mt-0.5">

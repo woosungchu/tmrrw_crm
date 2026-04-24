@@ -8,10 +8,14 @@ INPUT_CLS = "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none
 class SourceForm(forms.ModelForm):
     class Meta:
         model = Source
-        fields = ["title", "is_active", "tmrw_form_id"]
+        fields = ["title", "is_active", "tmrw_form_id", "noti_webhook_url"]
         widgets = {
             "title": forms.TextInput(attrs={"class": INPUT_CLS, "placeholder": "광고 랜딩 · 자사 폼 · 제휴사 등"}),
             "tmrw_form_id": forms.TextInput(attrs={"class": INPUT_CLS, "placeholder": "(선택) tmrw_web form_id"}),
+            "noti_webhook_url": forms.URLInput(attrs={
+                "class": INPUT_CLS,
+                "placeholder": "(선택) https://기존시스템/webhook",
+            }),
         }
 
 

@@ -8,6 +8,7 @@ from django.views.decorators.http import require_POST
 
 from apps.leads.models import Lead, TimelineEntry, Blacklist, phone_to_hash, phone_to_masked
 from apps.leads.services.assignment import auto_assign
+from apps.leads.services.noti import send_noti
 from .auth import authenticate_bearer
 
 
@@ -100,9 +101,13 @@ def leads_create(request):
     # 자동 배정 시도 (조건 안 맞으면 None, 리드는 그대로 남음)
     assigned_agent = auto_assign(lead)
 
+    # 외부 NOTI 발송 (실패해도 응답엔 영향 없음)
+    noti_result = send_noti(lead)
+
     return JsonResponse({
         "id": lead.id,
         "status": lead.status,
         "received_at": lead.received_at.isoformat(),
         "assigned_agent_id": assigned_agent.id if assigned_agent else None,
+        "noti_sent": noti_result,  # True/False/None
     }, status=201)

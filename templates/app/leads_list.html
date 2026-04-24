@@ -16,6 +16,16 @@
     </div>
   </div>
 
+  {% if noti_failed_count > 0 %}
+  <div class="mb-4 flex items-center justify-between bg-rose-50 border border-rose-200 rounded-lg px-4 py-2">
+    <div class="text-sm text-rose-800 flex items-center gap-2">
+      <span class="inline-block w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+      NOTI 발송 실패 리드 <b>{{ noti_failed_count }}</b>건. 확인 후 재시도/조치 필요.
+    </div>
+    <a href="?noti=failed" class="px-3 py-1 text-xs bg-rose-600 text-white rounded hover:bg-rose-500">실패만 보기</a>
+  </div>
+  {% endif %}
+
   <!-- 상태 탭 -->
   <div class="flex flex-wrap gap-2 mb-4">
     <a href="?{% if q %}q={{ q }}{% endif %}"
@@ -60,9 +70,14 @@
         <tr class="border-b border-slate-100 last:border-0 hover:bg-slate-50">
           <td class="px-4 py-3 text-slate-400 text-xs">{{ lead.id }}</td>
           <td class="px-4 py-3">
-            <a href="{% url 'lead_detail' pk=lead.pk %}" class="font-medium text-slate-900 hover:text-indigo-600">
-              {{ lead.name|default:"(이름 없음)" }}
-            </a>
+            <div class="flex items-center gap-2">
+              {% if lead.noti_status == 'failed' %}
+                <span title="NOTI 발송 실패" class="inline-block w-2 h-2 rounded-full bg-rose-500"></span>
+              {% endif %}
+              <a href="{% url 'lead_detail' pk=lead.pk %}" class="font-medium text-slate-900 hover:text-indigo-600">
+                {{ lead.name|default:"(이름 없음)" }}
+              </a>
+            </div>
             <div class="text-xs text-slate-500 font-mono">{{ lead.phone }}</div>
           </td>
           <td class="px-4 py-3">

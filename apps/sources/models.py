@@ -18,6 +18,10 @@ class Source(CompanyScopedModel):
         default=dict, blank=True,
         help_text="외부 payload key → CustomField code 매핑",
     )
+    noti_webhook_url = models.URLField(
+        max_length=500, blank=True,
+        help_text="리드 수신 후 외부 시스템 알림용 Webhook URL (선택). 실패 시 '빨간불'",
+    )
 
     class Meta:
         indexes = [models.Index(fields=["company", "is_active"])]
