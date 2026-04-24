@@ -2,10 +2,11 @@
 import json
 
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from apps.leads.models import Lead, TimelineEntry, phone_to_hash
+from apps.leads.models import Lead, TimelineEntry, Blacklist, phone_to_hash, phone_to_masked
 from apps.leads.services.assignment import auto_assign
 from .auth import authenticate_bearer
 
@@ -45,18 +46,33 @@ def leads_create(request):
         mapped = source.field_map.get(k, k) if source.field_map else k
         remapped[mapped] = v
 
-    lead = Lead(
+    p_hash = phone_to_hash(phone)
+
+    # 블랙리스트 체크
+    is_blacklisted = False
+    if p_hash:
+        is_blacklisted = Blacklist.objects.filter(
+            company=source.company, phone_hash=p_hash,
+        ).exists()
+
+    lead_kwargs = dict(
         company=source.company,
         source=source,
         name=name,
         phone=phone,
-        phone_hash=phone_to_hash(phone),
+        phone_hash=p_hash,
         fields=remapped,
         external_id=external_id,
         external_ip=external_ip if external_ip else None,
-        status="new",
         assignment_type="unassigned",
     )
+    if is_blacklisted:
+        lead_kwargs["status"] = "lost"
+        lead_kwargs["closed_at"] = timezone.now()
+    else:
+        lead_kwargs["status"] = "new"
+
+    lead = Lead(**lead_kwargs)
     lead.save()
 
     TimelineEntry.objects.create(
@@ -65,6 +81,21 @@ def leads_create(request):
         actor=None,
         payload={"source_id": source.id, "api_key_prefix": api_key.token_prefix},
     )
+
+    if is_blacklisted:
+        TimelineEntry.objects.create(
+            lead=lead,
+            type="blacklist_hit",
+            actor=None,
+            payload={"phone_masked": phone_to_masked(phone)},
+        )
+        return JsonResponse({
+            "id": lead.id,
+            "status": lead.status,
+            "received_at": lead.received_at.isoformat(),
+            "blacklisted": True,
+            "assigned_agent_id": None,
+        }, status=201)
 
     # 자동 배정 시도 (조건 안 맞으면 None, 리드는 그대로 남음)
     assigned_agent = auto_assign(lead)

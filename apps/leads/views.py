@@ -12,8 +12,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.accounts.models import User
-from .forms import LeadManualForm
-from .models import Lead, TimelineEntry, phone_to_hash
+from .forms import LeadManualForm, BlacklistManualForm
+from .models import Lead, TimelineEntry, Blacklist, phone_to_hash, phone_to_masked
 
 
 def _scope_leads_for_user(user, company):
@@ -242,6 +242,117 @@ def lead_create(request):
         form = LeadManualForm(company=request.company)
 
     return render(request, "app/lead_form.html", {"form": form})
+
+
+# ─────────── 블랙리스트 ───────────────────────────────────
+def _can_manage_blacklist(user):
+    return user.role in ("owner", "admin")
+
+
+@login_required
+@require_POST
+def lead_add_to_blacklist(request, pk):
+    """리드 상세에서 한 번에 블랙리스트 추가."""
+    if not _can_manage_blacklist(request.user):
+        return HttpResponseForbidden("블랙리스트 관리 권한 없음")
+    lead = get_object_or_404(_scope_leads_for_user(request.user, request.company), pk=pk)
+    if not lead.phone:
+        messages.error(request, "전화번호가 없는 리드입니다.")
+        return redirect("lead_detail", pk=lead.pk)
+
+    reason = (request.POST.get("reason") or "").strip()[:500]
+    p_hash = phone_to_hash(lead.phone)
+    p_masked = phone_to_masked(lead.phone)
+
+    bl, created = Blacklist.objects.get_or_create(
+        company=request.company, phone_hash=p_hash,
+        defaults={
+            "phone_masked": p_masked,
+            "reason": reason or "(사유 없음)",
+            "added_by": request.user,
+            "source_lead": lead,
+        },
+    )
+    if not created:
+        messages.info(request, f"{p_masked} 은 이미 블랙리스트에 있습니다.")
+        return redirect("lead_detail", pk=lead.pk)
+
+    # 동일 phone_hash 리드를 전부 lost 처리
+    same_phone_leads = Lead.objects.filter(
+        company=request.company, phone_hash=p_hash, is_deleted=False,
+    ).exclude(status="lost")
+    affected_ids = list(same_phone_leads.values_list("id", flat=True))
+    same_phone_leads.update(status="lost", closed_at=timezone.now())
+
+    TimelineEntry.objects.create(
+        lead=lead, type="blacklisted", actor=request.user,
+        payload={"reason": reason, "blacklist_id": bl.id, "affected_lead_ids": affected_ids},
+    )
+    messages.success(
+        request,
+        f"블랙리스트 추가 완료. 동일 번호 리드 {len(affected_ids)}건 '실패' 처리.",
+    )
+    return redirect("lead_detail", pk=lead.pk)
+
+
+@login_required
+def blacklist_list(request):
+    if not _can_manage_blacklist(request.user):
+        return HttpResponseForbidden("블랙리스트 관리 권한 없음")
+    if not request.company:
+        return redirect("/app/")
+    qs = Blacklist.objects.filter(company=request.company).select_related("added_by")
+    q = request.GET.get("q", "").strip()
+    if q:
+        qs = qs.filter(Q(phone_masked__icontains=q) | Q(reason__icontains=q))
+    paginator = Paginator(qs, 50)
+    page = paginator.get_page(request.GET.get("page") or 1)
+    return render(request, "app/blacklist_list.html", {
+        "page": page, "q": q,
+        "form": BlacklistManualForm(),
+    })
+
+
+@login_required
+@require_POST
+def blacklist_create_manual(request):
+    if not _can_manage_blacklist(request.user):
+        return HttpResponseForbidden("블랙리스트 관리 권한 없음")
+    form = BlacklistManualForm(request.POST)
+    if not form.is_valid():
+        for err in form.errors.values():
+            messages.error(request, "; ".join(err))
+        return redirect("blacklist_list")
+
+    phone = form.cleaned_data["phone"]
+    reason = form.cleaned_data.get("reason", "")
+    p_hash = phone_to_hash(phone)
+    p_masked = phone_to_masked(phone)
+
+    bl, created = Blacklist.objects.get_or_create(
+        company=request.company, phone_hash=p_hash,
+        defaults={
+            "phone_masked": p_masked,
+            "reason": reason or "(사유 없음)",
+            "added_by": request.user,
+        },
+    )
+    if not created:
+        messages.info(request, f"{p_masked} 은 이미 블랙리스트에 있습니다.")
+    else:
+        messages.success(request, f"{p_masked} 추가됨.")
+    return redirect("blacklist_list")
+
+
+@login_required
+@require_POST
+def blacklist_delete(request, pk):
+    if not _can_manage_blacklist(request.user):
+        return HttpResponseForbidden("블랙리스트 관리 권한 없음")
+    bl = get_object_or_404(Blacklist, pk=pk, company=request.company)
+    bl.delete()
+    messages.success(request, "삭제됨.")
+    return redirect("blacklist_list")
 
 
 @login_required

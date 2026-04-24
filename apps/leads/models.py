@@ -13,6 +13,18 @@ def phone_to_hash(phone):
     return hashlib.sha256(digits.encode("utf-8")).hexdigest() if digits else ""
 
 
+def phone_to_masked(phone):
+    """'01012345678' → '010-****-5678'. 로그·블랙리스트 표시용."""
+    if not phone:
+        return ""
+    digits = "".join(c for c in phone if c.isdigit())
+    if len(digits) < 7:
+        return phone
+    if len(digits) >= 10:
+        return f"{digits[:3]}-****-{digits[-4:]}"
+    return f"****-{digits[-4:]}"
+
+
 class Lead(CompanyScopedModel):
     STATUS_CHOICES = [
         ("new", "접수"),
@@ -103,6 +115,8 @@ class TimelineEntry(TimestampedModel):
         ("assigned", "배정"),
         ("reassigned", "재배정"),
         ("field_changed", "필드 변경"),
+        ("blacklisted", "블랙리스트 추가"),
+        ("blacklist_hit", "블랙리스트 차단"),
     ]
 
     lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name="timeline")
@@ -119,3 +133,27 @@ class TimelineEntry(TimestampedModel):
 
     def __str__(self):
         return f"{self.lead_id} · {self.get_type_display()} · {self.at:%Y-%m-%d %H:%M}"
+
+
+class Blacklist(CompanyScopedModel):
+    """전화번호 기반 블랙리스트. phone_hash 로 공개 API 수신 시 매칭."""
+
+    phone_hash = models.CharField(max_length=64)
+    phone_masked = models.CharField(max_length=20, help_text="010-****-1234 형식")
+    reason = models.TextField(blank=True)
+    added_by = models.ForeignKey(
+        "accounts.User", on_delete=models.SET_NULL, null=True, blank=True,
+    )
+    source_lead = models.ForeignKey(
+        Lead, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="generated_blacklists",
+        help_text="이 리드를 계기로 추가된 경우 연결",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        unique_together = [["company", "phone_hash"]]
+        indexes = [models.Index(fields=["company", "phone_hash"])]
+
+    def __str__(self):
+        return f"{self.phone_masked} ({self.reason[:30]})"

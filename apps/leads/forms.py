@@ -2,7 +2,7 @@ from django import forms
 
 from apps.accounts.models import User
 from apps.sources.models import Source
-from .models import Lead
+from .models import Lead, Blacklist
 
 
 INPUT_CLS = "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-indigo-500"
@@ -47,3 +47,24 @@ class LeadManualForm(forms.Form):
         if not cleaned.get("name") and not cleaned.get("phone"):
             raise forms.ValidationError("이름과 전화번호 중 하나는 입력해주세요.")
         return cleaned
+
+
+class BlacklistManualForm(forms.Form):
+    """블랙리스트 수동 추가."""
+    phone = forms.CharField(
+        label="전화번호",
+        max_length=20,
+        widget=forms.TextInput(attrs={"class": INPUT_CLS, "placeholder": "01012345678"}),
+    )
+    reason = forms.CharField(
+        label="사유",
+        required=False,
+        widget=forms.Textarea(attrs={"class": INPUT_CLS, "rows": 3}),
+    )
+
+    def clean_phone(self):
+        v = self.cleaned_data["phone"]
+        digits = "".join(c for c in v if c.isdigit())
+        if len(digits) < 7:
+            raise forms.ValidationError("유효한 전화번호를 입력해주세요.")
+        return v

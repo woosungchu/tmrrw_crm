@@ -9,4 +9,9 @@ urlpatterns = [
     path("<int:pk>/status/", views.lead_change_status, name="lead_change_status"),
     path("<int:pk>/assign/", views.lead_assign, name="lead_assign"),
     path("<int:pk>/memo/", views.lead_add_memo, name="lead_add_memo"),
+    path("<int:pk>/blacklist/", views.lead_add_to_blacklist, name="lead_add_to_blacklist"),
+    # Blacklist 관리
+    path("blacklist/", views.blacklist_list, name="blacklist_list"),
+    path("blacklist/new/", views.blacklist_create_manual, name="blacklist_create_manual"),
+    path("blacklist/<int:pk>/delete/", views.blacklist_delete, name="blacklist_delete"),
 ]

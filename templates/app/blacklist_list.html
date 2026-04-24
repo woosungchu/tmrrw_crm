@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}블랙리스트 — tmrrwcrm{% endblock %}
+
+{% block content %}
+<section class="max-w-screen-xl mx-auto px-4 py-8">
+  <div class="flex items-start justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold">블랙리스트</h1>
+      <p class="text-sm text-slate-500 mt-1">
+        등록된 번호는 공개 API 수신 시 자동으로 <b>실패(lost)</b> 처리되고 배정에서 제외됩니다.
+      </p>
+    </div>
+  </div>
+
+  <!-- 수동 추가 -->
+  <div class="bg-white border border-slate-200 rounded-lg p-4 mb-6">
+    <h2 class="text-sm font-semibold text-slate-900 mb-3">번호 추가</h2>
+    <form method="post" action="{% url 'blacklist_create_manual' %}" class="grid md:grid-cols-3 gap-2 items-end">
+      {% csrf_token %}
+      <label class="block">
+        <span class="block text-xs text-slate-500 mb-1">전화번호</span>
+        {{ form.phone }}
+      </label>
+      <label class="block">
+        <span class="block text-xs text-slate-500 mb-1">사유</span>
+        {{ form.reason }}
+      </label>
+      <button type="submit" class="px-4 py-2 text-sm bg-rose-600 text-white rounded hover:bg-rose-500 whitespace-nowrap">
+        블랙리스트에 추가
+      </button>
+    </form>
+  </div>
+
+  <!-- 검색 -->
+  <form method="get" class="mb-4 flex gap-2">
+    <input type="text" name="q" value="{{ q }}" placeholder="번호 또는 사유로 검색"
+           class="flex-1 px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-indigo-500" />
+    <button type="submit" class="px-4 py-2 text-sm bg-slate-900 text-white rounded hover:bg-slate-800">검색</button>
+    {% if q %}<a href="{% url 'blacklist_list' %}" class="px-4 py-2 text-sm text-slate-600 hover:text-slate-900">초기화</a>{% endif %}
+  </form>
+
+  {% if page.object_list %}
+  <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-500 text-xs">
+        <tr>
+          <th class="px-4 py-2 text-left">번호</th>
+          <th class="px-4 py-2 text-left">사유</th>
+          <th class="px-4 py-2 text-left">추가자</th>
+          <th class="px-4 py-2 text-left">추가일</th>
+          <th class="px-4 py-2"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for bl in page.object_list %}
+        <tr class="border-t border-slate-100 hover:bg-slate-50">
+          <td class="px-4 py-2 font-mono">{{ bl.phone_masked }}</td>
+          <td class="px-4 py-2 text-slate-600">{{ bl.reason|truncatechars:80 }}</td>
+          <td class="px-4 py-2">{{ bl.added_by.name|default:bl.added_by.login_id|default:"-" }}</td>
+          <td class="px-4 py-2 text-slate-500">{{ bl.created_at|date:"Y-m-d H:i" }}</td>
+          <td class="px-4 py-2 text-right">
+            <form method="post" action="{% url 'blacklist_delete' bl.pk %}" class="inline"
+                  onsubmit="return confirm('이 번호를 블랙리스트에서 제거할까요?');">
+              {% csrf_token %}
+              <button type="submit" class="text-rose-600 hover:underline text-xs">삭제</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page.has_other_pages %}
+  <nav class="flex justify-center gap-2 mt-4 text-sm">
+    {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q }}{% endif %}" class="px-3 py-1 border rounded hover:bg-slate-100">이전</a>{% endif %}
+    <span class="px-3 py-1 text-slate-500">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a href="?page={{ page.next_page_number }}{% if q %}&q={{ q }}{% endif %}" class="px-3 py-1 border rounded hover:bg-slate-100">다음</a>{% endif %}
+  </nav>
+  {% endif %}
+  {% else %}
+  <div class="bg-white border border-slate-200 rounded-lg p-12 text-center">
+    <p class="text-slate-500">{% if q %}검색 결과가 없습니다.{% else %}아직 블랙리스트에 등록된 번호가 없습니다.{% endif %}</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

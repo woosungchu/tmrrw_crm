@@ -153,6 +153,27 @@
       </div>
       {% endif %}
 
+      <!-- 블랙리스트 (owner/admin) -->
+      {% if user.role in "owner admin" and lead.phone %}
+      <div class="bg-white border border-rose-200 rounded-lg p-6">
+        <h2 class="font-semibold mb-3 text-rose-800">블랙리스트 추가</h2>
+        <p class="text-xs text-slate-500 mb-3">
+          추가 시: 같은 번호의 기존 리드 모두 <b>실패</b> 처리 + 공개 API 수신 시 자동 차단
+        </p>
+        <form method="post" action="{% url 'lead_add_to_blacklist' pk=lead.pk %}" class="grid md:grid-cols-3 gap-2 items-end"
+              onsubmit="return confirm('이 번호를 블랙리스트에 추가할까요? 같은 번호 리드들이 실패 처리됩니다.');">
+          {% csrf_token %}
+          <label class="block md:col-span-2">
+            <span class="block text-xs text-slate-500 mb-1">사유 (선택)</span>
+            <input type="text" name="reason" maxlength="500"
+                   class="w-full px-3 py-2 text-sm border border-slate-300 rounded"
+                   placeholder="예: 장난 전화" />
+          </label>
+          <button type="submit" class="px-4 py-2 text-sm bg-rose-600 text-white rounded hover:bg-rose-500">추가</button>
+        </form>
+      </div>
+      {% endif %}
+
       <!-- 콜백 예약 -->
       <div class="bg-white border border-slate-200 rounded-lg p-6">
         <h2 class="font-semibold mb-3 text-slate-900">콜백 예약</h2>
@@ -188,6 +209,7 @@
                      {% elif entry.type == 'callback_scheduled' %}border-violet-400
                      {% elif entry.type == 'status_change' %}border-emerald-400
                      {% elif entry.type == 'assigned' or entry.type == 'reassigned' %}border-sky-400
+                     {% elif entry.type == 'blacklisted' or entry.type == 'blacklist_hit' %}border-rose-500
                      {% else %}border-slate-200{% endif %}
                      pl-3 pb-2">
             <div class="font-medium text-slate-800">{{ entry.get_type_display }}</div>
@@ -208,6 +230,14 @@
             {% elif entry.type == 'callback_scheduled' %}
               <p class="text-slate-700 mt-0.5">{{ entry.payload.scheduled_at|slice:":16" }}</p>
               {% if entry.payload.note %}<p class="text-slate-600 text-xs mt-0.5">{{ entry.payload.note }}</p>{% endif %}
+            {% elif entry.type == 'blacklisted' %}
+              <p class="text-rose-700 mt-0.5">{{ entry.payload.reason|default:"(사유 없음)" }}</p>
+              {% if entry.payload.affected_lead_ids %}
+                <p class="text-xs text-slate-500 mt-0.5">같은 번호 리드 {{ entry.payload.affected_lead_ids|length }}건 자동 실패 처리</p>
+              {% endif %}
+            {% elif entry.type == 'blacklist_hit' %}
+              <p class="text-rose-700 mt-0.5">{{ entry.payload.phone_masked }}</p>
+              <p class="text-xs text-slate-500 mt-0.5">공개 API 수신 → 블랙리스트 일치 → 자동 실패</p>
             {% endif %}
 
             <div class="text-xs text-slate-500 mt-0.5">
