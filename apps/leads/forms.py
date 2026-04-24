@@ -59,7 +59,8 @@ class BlacklistManualForm(forms.Form):
     reason = forms.CharField(
         label="사유",
         required=False,
-        widget=forms.Textarea(attrs={"class": INPUT_CLS, "rows": 3}),
+        max_length=500,
+        widget=forms.TextInput(attrs={"class": INPUT_CLS, "placeholder": "예: 장난 전화, 스팸"}),
     )
 
     def clean_phone(self):
