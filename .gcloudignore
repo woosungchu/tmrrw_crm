@@ -1,0 +1,30 @@
+# gcloud 가 무시할 파일들 (배포 패키지 미포함)
+.gcloudignore
+.git
+.gitignore
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.log
+
+# Node / Tailwind 빌드 환경
+node_modules
+tailwind/
+
+# 로컬 개발 부산물
+.env
+.env.*
+*.sqlite3
+db.sqlite3
+
+# 문서 / 메모
+docs/
+README.md
+SECURITY_TODO.md
+CLAUDE.md
+
+# 테스트
+tests/
+.pytest_cache
