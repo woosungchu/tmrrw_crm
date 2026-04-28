@@ -4,12 +4,42 @@ import json
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 
 from apps.leads.models import Lead, TimelineEntry, Blacklist, phone_to_hash, phone_to_masked
 from apps.leads.services.assignment import auto_assign
 from apps.leads.services.noti import send_noti
 from .auth import authenticate_bearer
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def source_verify(request):
+    """
+    토큰 검증용 메타정보 API.
+    tmrw_web 등 외부 시스템에서 토큰을 입력받았을 때, 그 토큰이 어느
+    회사의 어느 채널인지 보여주기 위한 read-only 엔드포인트.
+
+    인증: Authorization: Bearer <token>
+    응답: { company_name, source_title, source_id, field_map, ok: true }
+    실패: 401 unauthorized
+    """
+    api_key = authenticate_bearer(request)
+    if not api_key:
+        return JsonResponse({"ok": False, "error": "unauthorized"}, status=401)
+
+    source = api_key.source
+    if not source.is_active:
+        return JsonResponse({"ok": False, "error": "source_inactive"}, status=403)
+
+    return JsonResponse({
+        "ok": True,
+        "source_id": source.id,
+        "source_title": source.title,
+        "company_id": source.company.id,
+        "company_name": source.company.name,
+        "field_map": source.field_map or {},
+    })
 
 
 @csrf_exempt
