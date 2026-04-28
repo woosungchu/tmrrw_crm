@@ -4,22 +4,29 @@ from apps.common.models import TimestampedModel
 
 class Company(TimestampedModel):
     PLAN_CHOICES = [
-        ("trial", "Trial"),
+        ("basic", "Basic"),
+        # 미래 확장 자리 (현재는 모두 basic)
         ("starter", "Starter"),
         ("pro", "Pro"),
         ("enterprise", "Enterprise"),
     ]
     BILLING_STATUS = [
-        ("active", "활성"),
+        ("pending_approval", "승인 대기"),
+        ("granted_free", "무료 사용 (승인됨)"),
+        ("denied", "신청 거부"),
+        ("active", "활성 (유료)"),
         ("past_due", "연체"),
         ("canceled", "해지"),
         ("trial", "체험중"),
         ("read_only", "읽기전용"),
     ]
 
+    # 앱 사용이 차단된 상태 — middleware/뷰에서 차단 검사용
+    BLOCKING_STATUSES = ("pending_approval", "denied", "read_only")
+
     name = models.CharField(max_length=200)
-    plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default="trial")
-    billing_status = models.CharField(max_length=20, choices=BILLING_STATUS, default="trial")
+    plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default="basic")
+    billing_status = models.CharField(max_length=20, choices=BILLING_STATUS, default="pending_approval")
     trial_end = models.DateTimeField(null=True, blank=True)
     timezone = models.CharField(max_length=50, default="Asia/Seoul")
     industry_preset = models.CharField(max_length=20, blank=True)
@@ -32,6 +39,14 @@ class Company(TimestampedModel):
         blank=True,
     )
     is_internal_test = models.BooleanField(default=False)
+
+    # 신청-승인 트래킹 (베타 무료티어용)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    approved_by = models.ForeignKey(
+        "accounts.User", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="approved_companies",
+    )
+    denial_reason = models.TextField(blank=True)
 
     def __str__(self):
         return self.name

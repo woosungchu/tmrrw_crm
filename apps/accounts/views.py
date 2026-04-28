@@ -14,6 +14,17 @@ def _can_invite(user):
 
 
 @login_required
+def blocked_page(request):
+    """billing_status 가 차단 상태인 회사의 user 가 도달하는 안내 페이지."""
+    company = request.company
+    status = company.billing_status if company else None
+    return render(request, 'app/blocked.html', {
+        "company": company,
+        "status": status,
+    })
+
+
+@login_required
 def app_home(request):
     """로그인 후 랜딩 = 대시보드."""
     from apps.dashboard.services import compute_dashboard

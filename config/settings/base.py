@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "apps.leads",
     "apps.communications",
     "apps.dashboard",
+    "apps.superadmin",
     "apps.public_api",
 ]
 
@@ -43,6 +44,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     "apps.common.middleware.CompanyContextMiddleware",
+    "apps.common.middleware.CompanyBillingGateMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"

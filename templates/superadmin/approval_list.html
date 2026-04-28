@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}신청 승인 — 운영자{% endblock %}
+
+{% block content %}
+<section class="max-w-screen-xl mx-auto px-4 py-8">
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold">베타 신청 승인</h1>
+    <p class="text-sm text-slate-500 mt-1">tmrrwcrm 베타 사용 신청한 회사 목록. 승인하면 즉시 무료 사용 가능.</p>
+  </div>
+
+  <!-- 탭 -->
+  <div class="flex gap-2 mb-4 text-sm">
+    <a href="?status=pending"
+       class="px-3 py-1 rounded {% if current_status == 'pending' %}bg-slate-900 text-white{% else %}bg-white border border-slate-300 text-slate-700{% endif %}">
+      대기 <span class="ml-1 text-xs opacity-75">{{ counts.pending }}</span>
+    </a>
+    <a href="?status=granted"
+       class="px-3 py-1 rounded {% if current_status == 'granted' %}bg-emerald-600 text-white{% else %}bg-white border border-slate-300 text-slate-700{% endif %}">
+      승인됨 <span class="ml-1 text-xs opacity-75">{{ counts.granted }}</span>
+    </a>
+    <a href="?status=denied"
+       class="px-3 py-1 rounded {% if current_status == 'denied' %}bg-rose-600 text-white{% else %}bg-white border border-slate-300 text-slate-700{% endif %}">
+      거부됨 <span class="ml-1 text-xs opacity-75">{{ counts.denied }}</span>
+    </a>
+    <a href="?status=all"
+       class="px-3 py-1 rounded {% if current_status == 'all' %}bg-slate-900 text-white{% else %}bg-white border border-slate-300 text-slate-700{% endif %}">전체</a>
+  </div>
+
+  {% if companies %}
+  <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-xs text-slate-500">
+        <tr>
+          <th class="px-4 py-2 text-left">회사</th>
+          <th class="px-4 py-2 text-left">오너</th>
+          <th class="px-4 py-2 text-left">신청일</th>
+          <th class="px-4 py-2 text-left">상태</th>
+          <th class="px-4 py-2"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in companies %}
+        <tr class="border-t border-slate-100 hover:bg-slate-50">
+          <td class="px-4 py-3">
+            <div class="font-medium text-slate-900">{{ c.name }}</div>
+            <div class="text-xs text-slate-500">id={{ c.id }}</div>
+          </td>
+          <td class="px-4 py-3">
+            {% if c.owner %}
+              <div>{{ c.owner.name|default:c.owner.login_id }}</div>
+              <div class="text-xs text-slate-500">{{ c.owner.email|default:"-" }}</div>
+            {% else %}
+              <span class="text-slate-400">-</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-xs text-slate-600">{{ c.created_at|date:"Y-m-d H:i" }}</td>
+          <td class="px-4 py-3">
+            {% if c.billing_status == 'pending_approval' %}
+              <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800">승인 대기</span>
+            {% elif c.billing_status == 'granted_free' %}
+              <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800">승인됨</span>
+              {% if c.approved_at %}
+                <div class="text-xs text-slate-500 mt-1">{{ c.approved_at|date:"Y-m-d H:i" }}{% if c.approved_by %} · {{ c.approved_by.name|default:c.approved_by.login_id }}{% endif %}</div>
+              {% endif %}
+            {% elif c.billing_status == 'denied' %}
+              <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-rose-100 text-rose-800">거부</span>
+              {% if c.denial_reason %}<div class="text-xs text-slate-500 mt-1 truncate max-w-xs">{{ c.denial_reason|truncatechars:60 }}</div>{% endif %}
+            {% else %}
+              <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-700">{{ c.get_billing_status_display }}</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-right whitespace-nowrap">
+            {% if c.billing_status == 'pending_approval' %}
+              <form method="post" action="{% url 'superadmin_approval_approve' c.id %}" class="inline mr-2">
+                {% csrf_token %}
+                <button type="submit" class="px-3 py-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded">승인</button>
+              </form>
+              <form method="post" action="{% url 'superadmin_approval_deny' c.id %}" class="inline-flex items-center gap-1"
+                    onsubmit="const r = prompt('거부 사유 (선택, 신청자에게 공개됨):'); if (r === null) return false; this.reason.value = r; return true;">
+                {% csrf_token %}
+                <input type="hidden" name="reason">
+                <button type="submit" class="px-3 py-1 text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white rounded">거부</button>
+              </form>
+            {% elif c.billing_status == 'denied' %}
+              <form method="post" action="{% url 'superadmin_approval_reopen' c.id %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="px-3 py-1 text-xs font-semibold border border-slate-300 hover:bg-slate-100 rounded">재검토</button>
+              </form>
+            {% elif c.billing_status == 'granted_free' %}
+              <span class="text-xs text-emerald-600">활성</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="bg-white border border-slate-200 rounded-lg p-12 text-center text-slate-500">
+    {% if current_status == 'pending' %}대기 중인 신청이 없습니다.{% else %}표시할 항목이 없습니다.{% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

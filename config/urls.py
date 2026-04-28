@@ -17,6 +17,8 @@ urlpatterns = [
     path('app/leads/', include('apps.leads.urls')),
     path('app/', include('apps.communications.urls')),
     path('app/', include('apps.companies.app_urls')),
+    # 운영자 (베타 신청 승인 등)
+    path('superadmin/', include('apps.superadmin.urls')),
     # 외부 리드 수신 API
     path('api/v1/', include('apps.public_api.urls')),
     # superuser 용 Django admin (내부만 사용 — IP 화이트리스트는 prod 에서)

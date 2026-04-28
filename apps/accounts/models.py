@@ -47,6 +47,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    is_approver = models.BooleanField(
+        default=False,
+        help_text="다른 회사의 베타 무료 신청 승인 권한. 내일마케팅 등 파트너 직원에게 부여.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     USERNAME_FIELD = "login_id"

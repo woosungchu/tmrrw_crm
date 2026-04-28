@@ -15,11 +15,11 @@ def create_company_with_owner(*, company_name, owner_name, email, phone, login_i
     """
     today = timezone.now()
 
+    # 베타 — 모든 신규 가입은 'pending_approval'. 내일마케팅 직원이 수동 승인.
     company = Company.objects.create(
         name=company_name,
-        plan="trial",
-        billing_status="trial",
-        trial_end=today + timedelta(days=14),
+        plan="basic",
+        billing_status="pending_approval",
     )
 
     owner = User.objects.create_user(
@@ -47,10 +47,10 @@ def create_company_with_owner(*, company_name, owner_name, email, phone, login_i
         tie_breaker="round_robin",
     )
 
-    # 결제 객체 (체험중, billing_key 없음)
+    # 결제 객체 (베타 무료 — billing_key 없음)
     Billing.objects.create(
         company=company,
-        plan="trial",
+        plan="basic",
         cycle_start=today.date(),
     )
 

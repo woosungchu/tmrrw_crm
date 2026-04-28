@@ -23,6 +23,9 @@
             <a href="{% url 'template_list' %}" class="hover:text-white">템플릿</a>
             <a href="{% url 'blacklist_list' %}" class="hover:text-white">블랙리스트</a>
           {% endif %}
+          {% if user.is_approver or user.is_superuser %}
+            <a href="{% url 'superadmin_approval_list' %}" class="hover:text-white text-amber-300">승인</a>
+          {% endif %}
           <span class="text-slate-400">{{ user.name|default:user.login_id }}</span>
           <form action="{% url 'logout' %}" method="post" class="inline">
             {% csrf_token %}
