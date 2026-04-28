@@ -60,16 +60,28 @@
 | WebSocket / SSE | HTMX polling (5-10s) 으로 충분 |
 | django-tenants (schema 격리) | MVP 규모에 오버엔지니어링 — `company_id` FK 만으로 격리 |
 
-### 1.3 배포 환경 (prod-only)
+### 1.3 배포 환경 (prod-only, 2026-04-27 배포 완료)
 
-- GCP 프로젝트 1개: **`tmrrw-crm-prod`**
-- GAE Standard Python 3.12
-- Cloud SQL Postgres 16 (인스턴스: `tmrrw-crm-db`, Seoul region)
-- 로컬 개발: Docker `postgres:16` 컨테이너 + Django runserver
-- staging 없음. 대체 안전장치 3개:
-  1. 로컬 Docker Postgres 에서 마이그레이션·end-to-end 검증
-  2. Prod 에 `internal_test_company` 1개 심어서 e2e 테스트 (통계·청구 제외)
-  3. `gcloud app deploy --no-promote --version=canary-YYMMDD-HHMM` 로 카나리 배포 → 확인 후 traffic 이동
+| 항목 | 값 |
+|---|---|
+| **도메인** | `tmrrwcrm.com` (별도 apex, 서브X — v2 옵션 B 채택) |
+| **GCP 프로젝트** | `tmrrwcrm` |
+| **리전** | `asia-northeast3` (Seoul) |
+| **GAE 인스턴스** | `F1`, auto-scaling `min=0 max=2`, target_cpu 0.65 |
+| **Entrypoint** | `gunicorn config.wsgi --workers 2 --threads 4 --timeout 60` |
+| **Cloud SQL** | Postgres 16 인스턴스 `tmrrw-crm-db` |
+| **DB 연결** | Unix socket `/cloudsql/tmrrwcrm:asia-northeast3:tmrrw-crm-db` |
+| **DB 이름 / 유저** | `crm` / `crm_app` |
+| **Secret Manager 키** | `DJANGO_SECRET_KEY`, `DB_PASSWORD` (env override 가능) |
+
+**보안 (prod):** DEBUG=False, HSTS 1년+subdomains+preload, SECURE_PROXY_SSL_HEADER, 쿠키 secure, Django admin IP 화이트리스트(`apps.common.middleware.AdminIPWhitelistMiddleware`).
+
+**로컬 개발:** Docker `postgres:16` 컨테이너 + Django runserver.
+
+**staging 없음. 대체 안전장치 3개:**
+1. 로컬 Docker Postgres 에서 마이그레이션·end-to-end 검증
+2. Prod 에 `internal_test_company` 1개 심어서 e2e 테스트 (통계·청구 제외)
+3. `gcloud app deploy --no-promote --version=canary-YYMMDD-HHMM` 로 카나리 배포 → 확인 후 traffic 이동
 
 ---
 
