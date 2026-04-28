@@ -11,7 +11,20 @@
   <div class="flex items-start justify-between mb-6">
     <div>
       <h1 class="text-2xl font-bold">{{ lead.name|default:"(이름 없음)" }}</h1>
-      <p class="text-slate-600 font-mono">{{ lead.phone }}</p>
+      <div class="flex items-center gap-2 mt-1">
+        <p class="text-slate-600 font-mono">{{ lead.phone|default:"-" }}</p>
+        {% if lead.phone and can_edit %}
+        <button type="button"
+                onclick="initiateCall({{ lead.pk }})"
+                title="통화 시도 (휴대폰 다이얼러 열림)"
+                class="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded transition">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+          </svg>
+          통화
+        </button>
+        {% endif %}
+      </div>
     </div>
     <span class="inline-block px-3 py-1 rounded text-sm font-semibold
                  {% if lead.status == 'new' %}bg-slate-100 text-slate-700
@@ -246,6 +259,7 @@
                      {% elif entry.type == 'blacklisted' or entry.type == 'blacklist_hit' %}border-rose-500
                      {% elif entry.type == 'noti_sent' %}border-emerald-300
                      {% elif entry.type == 'noti_failed' %}border-rose-400
+                     {% elif entry.type == 'call_initiated' %}border-teal-400
                      {% else %}border-slate-200{% endif %}
                      pl-3 pb-2">
             <div class="font-medium text-slate-800">{{ entry.get_type_display }}</div>
@@ -282,6 +296,8 @@
               {% else %}
                 <p class="text-xs text-rose-700 mt-0.5 font-mono">{{ entry.payload.error }}</p>
               {% endif %}
+            {% elif entry.type == 'call_initiated' %}
+              <p class="text-xs text-teal-700 mt-0.5 font-mono">{{ entry.payload.phone }}</p>
             {% endif %}
 
             <div class="text-xs text-slate-500 mt-0.5">
@@ -298,4 +314,34 @@
     </div>
   </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // 통화 버튼: 백엔드 기록 → tel: 다이얼러 호출
+  // Windows + Phone Link 가 연결된 경우 휴대폰으로 자동 발신.
+  // 일반 데스크톱은 OS 기본 전화 앱으로 라우팅.
+  function initiateCall(leadId) {
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+    fetch(`/app/leads/${leadId}/call/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok && data.tel) {
+        // 다이얼러 트리거
+        window.location.href = `tel:${data.tel}`;
+        // 상태 자동 변경됐으면 페이지 새로고침 (타임라인 + 배지 갱신)
+        if (data.auto_status_change) {
+          setTimeout(() => location.reload(), 600);
+        }
+      } else {
+        alert('통화 실패: ' + (data.error || '알 수 없음'));
+      }
+    })
+    .catch(err => alert('네트워크 오류: ' + err));
+  }
+</script>
 {% endblock %}

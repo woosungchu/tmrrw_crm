@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, Q
-from django.http import HttpResponse, HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -150,6 +150,39 @@ def lead_change_status(request, pk):
     )
     messages.success(request, f"상태 변경: {dict(Lead.STATUS_CHOICES).get(old_status)} → {dict(Lead.STATUS_CHOICES).get(new_status)}")
     return redirect("lead_detail", pk=lead.pk)
+
+
+@login_required
+@require_POST
+def lead_call_init(request, pk):
+    """상담사가 '통화' 버튼 누른 시점 기록. 실제 발신은 클라이언트의 tel: 가 처리."""
+    lead = get_object_or_404(_scope_leads_for_user(request.user, request.company), pk=pk)
+    if not lead.phone:
+        return JsonResponse({"ok": False, "error": "no_phone"}, status=400)
+
+    # status='new' 였으면 'contacted' 로 자동 전환 (관습적 흐름)
+    auto_status_change = None
+    if lead.status == "new":
+        old = lead.status
+        lead.status = "contacted"
+        if not lead.contacted_at:
+            lead.contacted_at = timezone.now()
+        lead.save(update_fields=["status", "contacted_at", "updated_at"])
+        auto_status_change = {"from": old, "to": "contacted"}
+        TimelineEntry.objects.create(
+            lead=lead, type="status_change", actor=request.user,
+            payload={"from": old, "to": "contacted", "trigger": "call_init"},
+        )
+
+    TimelineEntry.objects.create(
+        lead=lead, type="call_initiated", actor=request.user,
+        payload={"phone": lead.phone},
+    )
+    return JsonResponse({
+        "ok": True,
+        "tel": "".join(c for c in lead.phone if c.isdigit()),
+        "auto_status_change": auto_status_change,
+    })
 
 
 @login_required

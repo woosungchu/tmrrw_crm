@@ -9,6 +9,7 @@ urlpatterns = [
     path("<int:pk>/status/", views.lead_change_status, name="lead_change_status"),
     path("<int:pk>/assign/", views.lead_assign, name="lead_assign"),
     path("<int:pk>/memo/", views.lead_add_memo, name="lead_add_memo"),
+    path("<int:pk>/call/", views.lead_call_init, name="lead_call_init"),
     path("<int:pk>/blacklist/", views.lead_add_to_blacklist, name="lead_add_to_blacklist"),
     path("<int:pk>/noti/retry/", views.lead_noti_retry, name="lead_noti_retry"),
     path("<int:pk>/noti/clear/", views.lead_noti_clear, name="lead_noti_clear"),

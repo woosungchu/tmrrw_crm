@@ -117,6 +117,7 @@ class TimelineEntry(TimestampedModel):
         ("field_changed", "필드 변경"),
         ("blacklisted", "블랙리스트 추가"),
         ("blacklist_hit", "블랙리스트 차단"),
+        ("call_initiated", "통화 시도"),
     ]
 
     lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name="timeline")
