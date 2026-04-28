@@ -1,5 +1,7 @@
 """외부 리드 수신 API. v3 §4 스펙."""
 import json
+import logging
+from ipaddress import ip_address
 
 from django.http import JsonResponse
 from django.utils import timezone
@@ -10,6 +12,22 @@ from apps.leads.models import Lead, TimelineEntry, Blacklist, phone_to_hash, pho
 from apps.leads.services.assignment import auto_assign
 from apps.leads.services.noti import send_noti
 from .auth import authenticate_bearer
+
+logger = logging.getLogger(__name__)
+
+
+def _sanitize_ip(raw):
+    """X-Forwarded-For (콤마 분리) / 빈값 / IPv6 모두 안전 처리. invalid → None."""
+    if not raw:
+        return None
+    candidate = raw.split(",")[0].strip()
+    if not candidate:
+        return None
+    try:
+        ip_address(candidate)
+        return candidate
+    except (ValueError, TypeError):
+        return None
 
 
 @csrf_exempt
@@ -62,7 +80,7 @@ def leads_create(request):
     phone = (body.get("phone") or "").strip()[:20]
     fields = body.get("fields") or {}
     external_id = (body.get("external_id") or "").strip()[:200]
-    external_ip = body.get("external_ip") or request.META.get("REMOTE_ADDR")
+    external_ip = _sanitize_ip(body.get("external_ip") or request.META.get("REMOTE_ADDR"))
 
     if not name and not phone:
         return JsonResponse({"error": "name_or_phone_required"}, status=400)
@@ -71,7 +89,6 @@ def leads_create(request):
         return JsonResponse({"error": "fields_must_be_object"}, status=400)
 
     # field_map 적용: 외부 페이로드 key → 내부 CustomField code 로 리매핑
-    # field_map 예: {"업종": "business_type"}
     remapped = {}
     for k, v in fields.items():
         mapped = source.field_map.get(k, k) if source.field_map else k
@@ -94,7 +111,7 @@ def leads_create(request):
         phone_hash=p_hash,
         fields=remapped,
         external_id=external_id,
-        external_ip=external_ip if external_ip else None,
+        external_ip=external_ip,
         assignment_type="unassigned",
     )
     if is_blacklisted:
@@ -103,23 +120,35 @@ def leads_create(request):
     else:
         lead_kwargs["status"] = "new"
 
-    lead = Lead(**lead_kwargs)
-    lead.save()
+    # 핵심 저장 — 실패하면 명확한 에러 + log
+    try:
+        lead = Lead(**lead_kwargs)
+        lead.save()
+    except Exception:
+        logger.exception("[leads_create] Lead.save 실패. payload=%s", lead_kwargs)
+        return JsonResponse({"error": "lead_save_failed"}, status=500)
 
-    TimelineEntry.objects.create(
-        lead=lead,
-        type="received",
-        actor=None,
-        payload={"source_id": source.id, "api_key_prefix": api_key.token_prefix},
-    )
-
-    if is_blacklisted:
+    try:
         TimelineEntry.objects.create(
             lead=lead,
-            type="blacklist_hit",
+            type="received",
             actor=None,
-            payload={"phone_masked": phone_to_masked(phone)},
+            payload={"source_id": source.id, "api_key_prefix": api_key.token_prefix},
         )
+    except Exception:
+        logger.exception("[leads_create] TimelineEntry 생성 실패 (lead_id=%s)", lead.id)
+        # 리드는 저장됐으니 응답은 성공으로 보냄
+
+    if is_blacklisted:
+        try:
+            TimelineEntry.objects.create(
+                lead=lead,
+                type="blacklist_hit",
+                actor=None,
+                payload={"phone_masked": phone_to_masked(phone)},
+            )
+        except Exception:
+            logger.exception("[leads_create] blacklist TimelineEntry 실패")
         return JsonResponse({
             "id": lead.id,
             "status": lead.status,
@@ -128,16 +157,24 @@ def leads_create(request):
             "assigned_agent_id": None,
         }, status=201)
 
-    # 자동 배정 시도 (조건 안 맞으면 None, 리드는 그대로 남음)
-    assigned_agent = auto_assign(lead)
+    # 자동 배정 시도 — 실패해도 리드 저장은 유지
+    assigned_agent = None
+    try:
+        assigned_agent = auto_assign(lead)
+    except Exception:
+        logger.exception("[leads_create] auto_assign 실패 (lead_id=%s)", lead.id)
 
-    # 외부 NOTI 발송 (실패해도 응답엔 영향 없음)
-    noti_result = send_noti(lead)
+    # 외부 NOTI 발송 — 실패해도 응답엔 영향 없음
+    noti_result = None
+    try:
+        noti_result = send_noti(lead)
+    except Exception:
+        logger.exception("[leads_create] send_noti 실패 (lead_id=%s)", lead.id)
 
     return JsonResponse({
         "id": lead.id,
         "status": lead.status,
         "received_at": lead.received_at.isoformat(),
         "assigned_agent_id": assigned_agent.id if assigned_agent else None,
-        "noti_sent": noti_result,  # True/False/None
+        "noti_sent": noti_result,
     }, status=201)
