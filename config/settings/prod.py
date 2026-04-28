@@ -52,3 +52,21 @@ CSRF_TRUSTED_ORIGINS = [
     "https://*.tmrrwcrm.com",
     "https://*.appspot.com",
 ]
+
+SITE_BASE_URL = "https://tmrrwcrm.com"
+
+# 이메일 — env EMAIL_HOST_USER 있을 때만 SMTP, 없으면 console (GAE 로그)
+if os.environ.get("EMAIL_HOST_USER"):
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.gmail.com")
+    EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = os.environ["EMAIL_HOST_USER"]
+    try:
+        EMAIL_HOST_PASSWORD = get_secret("EMAIL_HOST_PASSWORD")
+    except Exception:
+        EMAIL_HOST_PASSWORD = ""
+    DEFAULT_FROM_EMAIL = os.environ.get("EMAIL_FROM") or f"tmrrwcrm <{EMAIL_HOST_USER}>"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    DEFAULT_FROM_EMAIL = "tmrrwcrm <noreply@tmrrwcrm.com>"

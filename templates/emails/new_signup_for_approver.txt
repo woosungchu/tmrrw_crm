@@ -1,0 +1,12 @@
+tmrrwcrm 운영팀 알림 — 새 베타 신청
+
+회사명:   {{ company.name }}
+신청 시각: {{ company.created_at|date:"Y-m-d H:i" }}
+오너:     {{ company.owner.name|default:company.owner.login_id }} ({{ company.owner.email|default:"-" }})
+
+승인 페이지에서 검토해주세요:
+{{ approval_url }}
+
+—
+이 메일은 자동 발송됩니다.
+tmrrwcrm

@@ -1,0 +1,11 @@
+{{ company.owner.name|default:company.owner.login_id }} 님,
+
+{{ company.name }} 의 tmrrwcrm 베타 사용 신청이 안타깝게도 승인되지 않았습니다.
+
+{% if company.denial_reason %}사유:
+{{ company.denial_reason }}
+
+{% endif %}사유 변경 후 재신청을 원하시거나 문의 사항이 있으시면 본 메일에 회신 부탁드립니다.
+
+—
+tmrrwcrm 운영팀

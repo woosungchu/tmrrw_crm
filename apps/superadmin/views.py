@@ -59,6 +59,11 @@ def approval_approve(request, company_id):
     company.denial_reason = ""  # 재신청 후 승인된 경우 이전 사유 클리어
     company.save(update_fields=["billing_status", "approved_at", "approved_by",
                                   "denial_reason", "updated_at"])
+    try:
+        from apps.common.emails import notify_owner_approved
+        notify_owner_approved(company)
+    except Exception:
+        pass
     messages.success(request, f"{company.name} 승인 완료.")
     return redirect("superadmin_approval_list")
 
@@ -75,6 +80,11 @@ def approval_deny(request, company_id):
     company.billing_status = "denied"
     company.denial_reason = reason
     company.save(update_fields=["billing_status", "denial_reason", "updated_at"])
+    try:
+        from apps.common.emails import notify_owner_denied
+        notify_owner_denied(company)
+    except Exception:
+        pass
     messages.success(request, f"{company.name} 신청 거부.")
     return redirect("superadmin_approval_list")
 

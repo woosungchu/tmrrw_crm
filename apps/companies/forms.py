@@ -9,9 +9,20 @@ INPUT_CLS = "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none
 
 
 class SignupForm(forms.Form):
+    # honeypot — 사람은 못 보고 봇은 자동 채움. 채워지면 가입 거부.
+    website = forms.CharField(
+        required=False, label="",
+        widget=forms.TextInput(attrs={
+            "tabindex": "-1",
+            "autocomplete": "off",
+            "aria-hidden": "true",
+            "style": "position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;",
+        }),
+    )
+
     company_name = forms.CharField(
         label="회사명", max_length=200,
-        widget=forms.TextInput(attrs={"class": INPUT_CLS, "placeholder": "(주)내일마케팅컴퍼니"}),
+        widget=forms.TextInput(attrs={"class": INPUT_CLS, "placeholder": "내일마케팅컴퍼니"}),
     )
     name = forms.CharField(
         label="담당자 이름", max_length=100,
@@ -33,6 +44,12 @@ class SignupForm(forms.Form):
         label="비밀번호", min_length=8,
         widget=forms.PasswordInput(attrs={"class": INPUT_CLS}),
     )
+
+    def clean_website(self):
+        # honeypot — 채워져있으면 봇. 사용자엔 보이지 않는 일반 에러로 가입 차단.
+        if self.cleaned_data.get("website"):
+            raise forms.ValidationError(" ")
+        return ""
 
     def clean_login_id(self):
         login_id = self.cleaned_data["login_id"]

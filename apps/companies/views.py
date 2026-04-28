@@ -13,7 +13,21 @@ def landing(request):
     # 로그인 상태면 바로 대시보드로
     if request.user.is_authenticated:
         return redirect('/app/')
-    return render(request, 'public/landing.html')
+    feature_list = [
+        "리드 CRUD · 엑셀 다운로드",
+        "중복 감지 · 블랙리스트",
+        "상태 머신 (접수→상담→결과)",
+        "타임라인 · 메모",
+        "SMS 발송 (템플릿 변수)",
+        "콜백 예약 · 브라우저 알림",
+        "통화 원클릭 (Phone Link)",
+        "자동 배정 엔진",
+        "대시보드 · KPI 차트",
+        "역할별 권한 (owner/admin/intake/agent)",
+        "멀티 채널 수신 API",
+        "팀 초대 · 조직 계층",
+    ]
+    return render(request, 'public/landing.html', {"feature_list": feature_list})
 
 
 def signup(request):
@@ -32,7 +46,13 @@ def signup(request):
                 password=form.cleaned_data['password'],
             )
             login(request, owner)
-            messages.success(request, f"{company.name} 가입 완료! 14일 무료 체험 시작.")
+            # 승인자에게 메일 알림 (실패해도 가입엔 영향 없음)
+            try:
+                from apps.common.emails import notify_approvers_new_signup
+                notify_approvers_new_signup(company)
+            except Exception:
+                pass
+            messages.success(request, f"{company.name} 신청 완료! 운영팀 승인 후 사용 가능합니다.")
             return redirect('/app/')
     else:
         form = SignupForm()
