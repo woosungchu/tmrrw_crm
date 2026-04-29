@@ -46,6 +46,22 @@ def _pick_round_robin(candidates_ordered, last_id):
     return agents[0]
 
 
+def _pick_weighted(candidates_ordered, cursor):
+    """
+    가중치 기반 stride 스케줄링.
+    예: A=2, B=1, C=4 → 시퀀스 [A,A,B,C,C,C,C] 를 cursor 위치로 순환.
+    weight=0 인 agent 는 시퀀스에서 제외 (다만 quota 초과 등 외부 필터에 걸렸으면 _eligible 단계에서 이미 빠짐).
+    """
+    expanded = []
+    for a in candidates_ordered:
+        weight = max(int(a.assignment_weight or 0), 0)
+        for _ in range(weight):
+            expanded.append(a)
+    if not expanded:
+        return None
+    return expanded[cursor % len(expanded)]
+
+
 @transaction.atomic
 def auto_assign(lead):
     """
@@ -72,6 +88,9 @@ def auto_assign(lead):
     if config.tie_breaker == "round_robin":
         ordered = candidates.order_by("id")
         chosen = _pick_round_robin(ordered, config.last_assigned_agent_id)
+    elif config.tie_breaker == "weighted":
+        ordered = candidates.order_by("id")
+        chosen = _pick_weighted(ordered, config.weighted_cursor)
     else:  # least_loaded
         chosen = candidates.order_by("today_count", "id").first()
 
@@ -83,7 +102,11 @@ def auto_assign(lead):
     lead.save(update_fields=["agent", "assignment_type", "updated_at"])
 
     config.last_assigned_agent = chosen
-    config.save(update_fields=["last_assigned_agent", "updated_at"])
+    if config.tie_breaker == "weighted":
+        config.weighted_cursor = (config.weighted_cursor or 0) + 1
+        config.save(update_fields=["last_assigned_agent", "weighted_cursor", "updated_at"])
+    else:
+        config.save(update_fields=["last_assigned_agent", "updated_at"])
 
     TimelineEntry.objects.create(
         lead=lead, type="assigned", actor=None,

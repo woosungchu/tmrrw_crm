@@ -37,38 +37,9 @@ def app_home(request):
 
 @login_required
 def invite_list(request):
-    """초대 목록 + 신규 초대 폼."""
-    if not _can_invite(request.user):
-        return HttpResponseForbidden("관리 권한이 필요합니다.")
-
-    company = request.company
-    if not company:
-        messages.error(request, "회사가 설정되지 않은 계정입니다. Django admin 에서 본인 계정에 회사를 지정하거나, 신규 회사로 가입해주세요.")
-        return redirect("/app/")
-
-    form = InviteForm(company=company)
-
-    if request.method == "POST":
-        form = InviteForm(request.POST, company=company)
-        if form.is_valid():
-            site_base_url = f"{request.scheme}://{request.get_host()}"
-            invite = create_and_send_invite(
-                company=company,
-                email=form.cleaned_data["email"],
-                role=form.cleaned_data["role"],
-                manager=form.cleaned_data["manager"],
-                invited_by=request.user,
-                site_base_url=site_base_url,
-            )
-            messages.success(request, f"{invite.email} 에게 초대 메일을 보냈습니다.")
-            return redirect("invite_list")
-
-    invites = InviteToken.objects.filter(company=company).order_by("-created_at")[:50]
-
-    return render(request, "app/invite_list.html", {
-        "form": form,
-        "invites": invites,
-    })
+    """기존 URL 유지용 — 통합 팀 관리 페이지로 redirect (초대 탭 활성)."""
+    from django.urls import reverse
+    return redirect(f"{reverse('team_settings')}#invite")
 
 
 def accept_invite(request, token):

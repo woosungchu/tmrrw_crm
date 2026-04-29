@@ -3,10 +3,15 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from django.shortcuts import render, redirect
+from django.urls import reverse
 
 from .forms import SignupForm, AssignmentConfigForm
 from .models import AssignmentConfig
 from .services import create_company_with_owner
+
+from apps.accounts.forms import InviteForm
+from apps.accounts.models import InviteToken, User
+from apps.accounts.services import create_and_send_invite
 
 
 def landing(request):
@@ -62,24 +67,88 @@ def signup(request):
 
 @login_required
 def assignment_settings(request):
-    """자동 배정 설정 편집 (owner/admin)."""
+    """기존 URL 유지용 — 통합 페이지로 redirect (자동 배정 탭 활성)."""
+    return redirect(f"{reverse('team_settings')}#assignment")
+
+
+@login_required
+def team_settings(request):
+    """
+    팀 관리 통합 페이지: 팀원 초대 + 자동 배정 (탭 UI).
+    POST 요청은 hidden 'form_type' 으로 분기:
+      - invite: 초대 메일 발송
+      - assignment: 자동 배정 설정 저장 (+ 비율 가중치 동시 저장)
+    """
     if request.user.role not in ("owner", "admin"):
         return HttpResponseForbidden("관리 권한이 필요합니다.")
     if not request.company:
         return redirect("/app/")
 
-    config, _ = AssignmentConfig.objects.get_or_create(company=request.company)
+    company = request.company
+    config, _ = AssignmentConfig.objects.get_or_create(company=company)
+
+    invite_form = InviteForm(company=company)
+    assignment_form = AssignmentConfigForm(instance=config)
 
     if request.method == "POST":
-        form = AssignmentConfigForm(request.POST, instance=config)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "자동 배정 설정 저장됨.")
-            return redirect("assignment_settings")
-    else:
-        form = AssignmentConfigForm(instance=config)
+        form_type = request.POST.get("form_type", "")
 
-    return render(request, "app/assignment_settings.html", {
-        "form": form,
+        if form_type == "invite":
+            invite_form = InviteForm(request.POST, company=company)
+            if invite_form.is_valid():
+                site_base_url = f"{request.scheme}://{request.get_host()}"
+                invite = create_and_send_invite(
+                    company=company,
+                    email=invite_form.cleaned_data["email"],
+                    role=invite_form.cleaned_data["role"],
+                    manager=invite_form.cleaned_data["manager"],
+                    invited_by=request.user,
+                    site_base_url=site_base_url,
+                )
+                messages.success(request, f"{invite.email} 에게 초대 메일을 보냈습니다.")
+                return redirect(f"{reverse('team_settings')}#invite")
+
+        elif form_type == "assignment":
+            assignment_form = AssignmentConfigForm(request.POST, instance=config)
+            if assignment_form.is_valid():
+                assignment_form.save()
+                # 가중치 동시 저장 — POST 의 weight_<user_id> 키 파싱
+                _save_agent_weights(company, request.POST)
+                messages.success(request, "자동 배정 설정 저장됨.")
+                return redirect(f"{reverse('team_settings')}#assignment")
+
+    invites = InviteToken.objects.filter(company=company).order_by("-created_at")[:50]
+    agents = User.objects.filter(
+        company=company, role="agent", is_active=True,
+    ).order_by("name", "login_id")
+
+    return render(request, "app/team_settings.html", {
+        "invite_form": invite_form,
+        "assignment_form": assignment_form,
+        "invites": invites,
+        "agents": agents,
         "config": config,
     })
+
+
+def _save_agent_weights(company, post_data):
+    """POST 데이터의 weight_<user_id> 키를 모아 한 번에 update."""
+    updates = []
+    for key, value in post_data.items():
+        if not key.startswith("weight_"):
+            continue
+        try:
+            user_id = int(key.split("_", 1)[1])
+            weight = max(int(value or 0), 0)
+        except (ValueError, IndexError):
+            continue
+        updates.append((user_id, weight))
+    if not updates:
+        return
+    # bulk update — 회사 소속 + agent 역할만 (보안)
+    user_ids = [uid for uid, _ in updates]
+    weight_map = dict(updates)
+    qs = User.objects.filter(id__in=user_ids, company=company, role="agent")
+    for u in qs:
+        u.assignment_weight = weight_map[u.id]
+    User.objects.bulk_update(qs, ["assignment_weight"])

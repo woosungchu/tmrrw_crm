@@ -75,8 +75,9 @@ PLAN_LIMITS = {
 
 class AssignmentConfig(TimestampedModel):
     TIE_BREAKER_CHOICES = [
-        ("round_robin", "Round Robin"),
-        ("least_loaded", "Least Loaded"),
+        ("round_robin", "순서대로 (라운드 로빈)"),
+        ("least_loaded", "오늘 적게 받은 사람"),
+        ("weighted", "비율 기반 (상담사별 가중치)"),
     ]
 
     company = models.OneToOneField(
@@ -93,6 +94,10 @@ class AssignmentConfig(TimestampedModel):
         "accounts.User", on_delete=models.SET_NULL, null=True, blank=True,
         related_name="+",
         help_text="round_robin 커서",
+    )
+    weighted_cursor = models.PositiveBigIntegerField(
+        default=0,
+        help_text="비율 기반 배정 시 시퀀스 카운터. 매 배정마다 +1.",
     )
 
     def __str__(self):

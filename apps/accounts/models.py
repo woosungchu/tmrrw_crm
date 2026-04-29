@@ -45,6 +45,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     daily_quota = models.PositiveIntegerField(
         null=True, blank=True, help_text="agent 자동 배정 쿼터. null=무제한"
     )
+    assignment_weight = models.PositiveIntegerField(
+        default=1,
+        help_text="비율 기반 배정 시 가중치. 0 = 비율 배정에서 제외 (단, 다른 전략에선 그대로 후보).",
+    )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_approver = models.BooleanField(

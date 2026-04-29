@@ -32,3 +32,6 @@
 @theme {
   --font-sans: 'Pretendard', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
+
+/* Alpine.js x-cloak — 페이지 로드 전 미초기화 요소 숨김 (탭 깜빡임 방지) */
+[x-cloak] { display: none !important; }

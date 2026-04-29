@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+
+{% block title %}팀 관리 — tmrrwcrm{% endblock %}
+
+{% block content %}
+<section class="max-w-screen-xl mx-auto px-4 py-8"
+         x-data="{ tab: (window.location.hash || '#invite').slice(1) }"
+         x-init="$watch('tab', v => history.replaceState(null, '', '#' + v))">
+
+  <h1 class="text-2xl font-bold mb-6">팀 관리</h1>
+
+  <!-- Tab buttons -->
+  <div class="border-b border-slate-200 flex gap-1 mb-6">
+    <button type="button" @click="tab='invite'"
+            :class="tab==='invite' ? 'border-indigo-600 text-indigo-700 font-semibold' : 'border-transparent text-slate-500 hover:text-slate-700'"
+            class="px-4 py-2 -mb-px border-b-2 transition">
+      팀원 초대
+    </button>
+    <button type="button" @click="tab='assignment'"
+            :class="tab==='assignment' ? 'border-indigo-600 text-indigo-700 font-semibold' : 'border-transparent text-slate-500 hover:text-slate-700'"
+            class="px-4 py-2 -mb-px border-b-2 transition">
+      자동 배정
+    </button>
+  </div>
+
+  <!-- ========== Tab 1: 팀원 초대 ========== -->
+  <div x-show="tab==='invite'" x-cloak>
+    <div class="grid md:grid-cols-2 gap-8">
+      <!-- 신규 초대 폼 -->
+      <div class="bg-white border border-slate-200 rounded-lg p-6">
+        <h2 class="font-semibold mb-4">새 초대 보내기</h2>
+        <form method="post" class="space-y-4">
+          {% csrf_token %}
+          <input type="hidden" name="form_type" value="invite">
+          {% for field in invite_form %}
+          <div>
+            <label for="{{ field.id_for_label }}" class="block text-sm font-semibold mb-1">
+              {{ field.label }}{% if field.field.required %}<span class="text-rose-500"> *</span>{% endif %}
+            </label>
+            {{ field }}
+            {% if field.errors %}<p class="text-xs text-rose-600 mt-1">{{ field.errors|join:" / " }}</p>{% endif %}
+          </div>
+          {% endfor %}
+          <button type="submit"
+                  class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded transition">
+            초대 메일 보내기
+          </button>
+        </form>
+      </div>
+
+      <!-- 초대 목록 -->
+      <div class="bg-white border border-slate-200 rounded-lg p-6">
+        <h2 class="font-semibold mb-4">최근 초대 내역</h2>
+        {% if invites %}
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-slate-500 border-b border-slate-200">
+              <th class="py-2">이메일</th>
+              <th class="py-2">역할</th>
+              <th class="py-2">상태</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for i in invites %}
+            <tr class="border-b border-slate-100 last:border-0">
+              <td class="py-2">{{ i.email }}</td>
+              <td class="py-2">{{ i.get_role_display }}</td>
+              <td class="py-2">
+                {% if i.consumed_at %}
+                  <span class="text-emerald-600">수락 완료</span>
+                {% else %}
+                  <span class="text-slate-500">대기중 ~ {{ i.expires_at|date:"m/d" }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-sm text-slate-500">아직 초대 내역 없음.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== Tab 2: 자동 배정 ========== -->
+  <div x-show="tab==='assignment'" x-cloak>
+    <p class="text-sm text-slate-500 mb-4">
+      켜두면 공개 API 로 들어오는 리드가 운영 시간·요일 조건 맞을 때 상담사에게 자동 배정됩니다.
+    </p>
+
+    <form method="post" class="space-y-6 bg-white border border-slate-200 rounded-lg p-6 max-w-2xl"
+          x-data="{ strategy: '{{ assignment_form.tie_breaker.value|default:'round_robin' }}' }">
+      {% csrf_token %}
+      <input type="hidden" name="form_type" value="assignment">
+
+      <!-- auto_on 토글 -->
+      <label class="flex items-start gap-3 cursor-pointer">
+        <input type="checkbox" name="auto_on" {% if assignment_form.auto_on.value %}checked{% endif %}
+               class="mt-1 w-4 h-4 accent-indigo-600">
+        <div>
+          <div class="font-semibold text-slate-900">자동 배정 활성화</div>
+          <div class="text-xs text-slate-500">비활성 시 신규 리드는 "미배정" 으로 남음.</div>
+        </div>
+      </label>
+
+      <!-- 요일 -->
+      <div>
+        <div class="font-semibold text-slate-900 mb-2">운영 요일</div>
+        <div class="flex flex-wrap gap-2">
+          {% for value, label in assignment_form.weekdays.field.choices %}
+            <label class="inline-flex items-center gap-2 px-3 py-2 border border-slate-300 rounded cursor-pointer hover:bg-slate-50">
+              <input type="checkbox" name="weekdays" value="{{ value }}"
+                     {% if value|stringformat:"s" in assignment_form.weekdays.value %}checked{% endif %}
+                     class="w-4 h-4 accent-indigo-600">
+              <span class="text-sm">{{ label }}</span>
+            </label>
+          {% endfor %}
+        </div>
+        {% if assignment_form.weekdays.errors %}<p class="text-xs text-rose-600 mt-1">{{ assignment_form.weekdays.errors|join:" / " }}</p>{% endif %}
+      </div>
+
+      <!-- 시간 -->
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-slate-900 mb-1">시작 시각</label>
+          {{ assignment_form.time_start }}
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-slate-900 mb-1">종료 시각</label>
+          {{ assignment_form.time_end }}
+        </div>
+      </div>
+
+      <!-- 배정 방식 -->
+      <div>
+        <label class="block text-sm font-semibold text-slate-900 mb-1">배정 방식</label>
+        <select name="tie_breaker" x-model="strategy"
+                class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-indigo-500">
+          {% for value, label in assignment_form.tie_breaker.field.choices %}
+            <option value="{{ value }}" {% if assignment_form.tie_breaker.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <div class="text-xs text-slate-500 mt-2 space-y-1">
+          <p><strong>순서대로 (라운드 로빈)</strong>: ID 순으로 한 명씩 돌아가며.</p>
+          <p><strong>오늘 적게 받은 사람</strong>: 오늘 배정 건수가 가장 적은 상담사 우선.</p>
+          <p><strong>비율 기반</strong>: 상담사별 가중치대로 분배. 예) A=2, B=1, C=4 → 7건 마다 A 2건, B 1건, C 4건.</p>
+        </div>
+      </div>
+
+      <!-- 비율 가중치 입력 (strategy=weighted 일 때만 노출) -->
+      <div x-show="strategy === 'weighted'" x-cloak class="border-t border-slate-200 pt-6">
+        <div class="font-semibold text-slate-900 mb-1">상담사별 가중치</div>
+        <p class="text-xs text-slate-500 mb-3">
+          숫자가 클수록 더 많이 받음. 0 = 비율 배정에서 제외.
+        </p>
+        {% if agents %}
+        <div class="space-y-2">
+          {% for a in agents %}
+          <div class="flex items-center gap-3 py-1">
+            <div class="flex-1 text-sm">{{ a.name|default:a.login_id }}</div>
+            <input type="number" name="weight_{{ a.id }}" value="{{ a.assignment_weight }}"
+                   min="0" max="100" step="1"
+                   class="w-20 px-2 py-1 border border-slate-300 rounded text-sm focus:outline-none focus:border-indigo-500">
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-slate-500">활성 상담사 없음. 먼저 팀원 초대 탭에서 상담사를 초대하세요.</p>
+        {% endif %}
+      </div>
+
+      <div class="pt-4 border-t border-slate-200 flex justify-end">
+        <button type="submit" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded transition">
+          저장
+        </button>
+      </div>
+    </form>
+
+    <div class="mt-6 bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs text-slate-600 max-w-2xl">
+      <p class="font-semibold text-slate-700 mb-1">현재 상태</p>
+      <ul class="space-y-0.5">
+        <li>• 자동 배정: {% if config.auto_on %}<span class="text-emerald-600">ON</span>{% else %}<span class="text-slate-400">OFF</span>{% endif %}</li>
+        <li>• 운영 요일: {{ config.weekdays|default:"(없음)" }}</li>
+        <li>• 운영 시간: {{ config.time_start|time:"H:i" }} ~ {{ config.time_end|time:"H:i" }}</li>
+        <li>• 배정 방식: {{ config.get_tie_breaker_display }}</li>
+        {% if config.tie_breaker == 'round_robin' %}
+        <li>• 마지막 배정 상담사 (RR 커서): {% if config.last_assigned_agent %}{{ config.last_assigned_agent.name|default:config.last_assigned_agent.login_id }}{% else %}(없음){% endif %}</li>
+        {% elif config.tie_breaker == 'weighted' %}
+        <li>• 비율 시퀀스 카운터: {{ config.weighted_cursor }}</li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+
+</section>
+{% endblock %}
