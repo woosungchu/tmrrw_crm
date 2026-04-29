@@ -102,6 +102,27 @@ LOGOUT_REDIRECT_URL = "/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# ─── 로깅: app 로거 INFO 까지 stderr 로 (GAE 콘솔/Cloud Logging 으로 흐름) ───
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {"format": "[%(levelname)s] %(name)s — %(message)s"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "loggers": {
+        # Django 기본은 WARNING 유지 (request 로그 등 시끄러움 방지)
+        "django": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+        # 우리 앱은 INFO 까지 — NOTI enqueue / worker 흐름 추적 가능
+        "apps": {"handlers": ["console"], "level": "INFO", "propagate": False},
+    },
+}
+
 # ─── NOTI 비동기 발송 (Cloud Tasks) ────────────────────────────
 # "sync"     — 즉시 인라인 실행 (dev 기본). public_api 응답에 NOTI 시간 포함.
 # "cloud_tasks" — Cloud Tasks 큐로 enqueue (prod). 실패 시 자동 재시도.
