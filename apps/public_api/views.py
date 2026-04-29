@@ -10,7 +10,7 @@ from django.views.decorators.http import require_POST, require_http_methods
 
 from apps.leads.models import Lead, TimelineEntry, Blacklist, phone_to_hash, phone_to_masked
 from apps.leads.services.assignment import auto_assign
-from apps.leads.services.noti import send_noti
+from apps.leads.services.noti_queue import enqueue_noti
 from .auth import authenticate_bearer
 
 logger = logging.getLogger(__name__)
@@ -164,12 +164,13 @@ def leads_create(request):
     except Exception:
         logger.exception("[leads_create] auto_assign 실패 (lead_id=%s)", lead.id)
 
-    # 외부 NOTI 발송 — 실패해도 응답엔 영향 없음
-    noti_result = None
+    # 외부 NOTI: prod 는 Cloud Tasks 큐로 enqueue → 즉시 응답 (실패 시 자동 재시도).
+    # dev 는 sync 인라인 실행. 어느 모드든 예외 bubble up 안 함.
+    noti_result = "skipped"
     try:
-        noti_result = send_noti(lead)
+        noti_result = enqueue_noti(lead.id)
     except Exception:
-        logger.exception("[leads_create] send_noti 실패 (lead_id=%s)", lead.id)
+        logger.exception("[leads_create] enqueue_noti 실패 (lead_id=%s)", lead.id)
 
     return JsonResponse({
         "id": lead.id,

@@ -55,6 +55,10 @@ CSRF_TRUSTED_ORIGINS = [
 
 SITE_BASE_URL = "https://tmrrwcrm.com"
 
+# NOTI 발송: prod 는 Cloud Tasks 사용 (콜드 스타트 timeout 회피 + 자동 재시도)
+NOTI_DISPATCH = "cloud_tasks"
+GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "tmrrwcrm")
+
 # 이메일 — env EMAIL_HOST_USER 있을 때만 SMTP, 없으면 console (GAE 로그)
 if os.environ.get("EMAIL_HOST_USER"):
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

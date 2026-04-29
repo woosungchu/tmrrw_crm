@@ -101,3 +101,11 @@ LOGIN_REDIRECT_URL = "/app/"
 LOGOUT_REDIRECT_URL = "/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# ─── NOTI 비동기 발송 (Cloud Tasks) ────────────────────────────
+# "sync"     — 즉시 인라인 실행 (dev 기본). public_api 응답에 NOTI 시간 포함.
+# "cloud_tasks" — Cloud Tasks 큐로 enqueue (prod). 실패 시 자동 재시도.
+NOTI_DISPATCH = os.environ.get("NOTI_DISPATCH", "sync")
+NOTI_QUEUE_LOCATION = os.environ.get("NOTI_QUEUE_LOCATION", "asia-northeast3")
+NOTI_QUEUE_NAME = os.environ.get("NOTI_QUEUE_NAME", "noti-webhook")
+GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "")

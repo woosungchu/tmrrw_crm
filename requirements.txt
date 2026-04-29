@@ -6,3 +6,4 @@ gunicorn>=22.0
 openpyxl>=3.1
 requests>=2.31
 google-cloud-secret-manager>=2.20
+google-cloud-tasks>=2.16

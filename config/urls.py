@@ -3,8 +3,11 @@ from django.contrib import admin
 from django.urls import path, include
 
 from apps.accounts.views import accept_invite
+from apps.leads.internal_views import noti_worker
 
 urlpatterns = [
+    # GAE 내부 호출 전용 (Cloud Tasks worker). 외부 요청은 X-AppEngine-* 헤더 부재로 403.
+    path('internal/noti/run/<int:lead_id>/', noti_worker, name='noti_worker'),
     # 공개 (랜딩 / 가입 / 로그인 안내)
     path('', include('apps.companies.public_urls')),
     # 초대 수락 (비로그인 상태에서 접근)
