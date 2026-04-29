@@ -59,8 +59,16 @@ SITE_BASE_URL = "https://tmrrwcrm.com"
 NOTI_DISPATCH = "cloud_tasks"
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "tmrrwcrm")
 
-# 이메일 — env EMAIL_HOST_USER 있을 때만 SMTP, 없으면 console (GAE 로그)
-if os.environ.get("EMAIL_HOST_USER"):
+# 이메일 — 우선순위: NCP Cloud Outbound Mailer > SMTP > console
+# 1) USE_NCP_MAIL=1 이면 NCP 메일 (커스텀 백엔드, HMAC REST)
+# 2) EMAIL_HOST_USER 가 있으면 일반 SMTP (Gmail/SendGrid 등)
+# 3) 둘 다 없으면 console (GAE 로그에만, 실제 발송 X)
+if os.environ.get("USE_NCP_MAIL") == "1":
+    EMAIL_BACKEND = "apps.common.email_backends.NCPMailBackend"
+    NCP_SENS_ACCESS_KEY = os.environ.get("NCP_SENS_ACCESS_KEY") or get_secret("NCP_SENS_ACCESS_KEY")
+    NCP_SENS_SECRET_KEY = get_secret("NCP_SENS_SECRET_KEY")
+    DEFAULT_FROM_EMAIL = os.environ.get("EMAIL_FROM") or "tmrrwcrm <noreply@tmrrwcrm.com>"
+elif os.environ.get("EMAIL_HOST_USER"):
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
     EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.gmail.com")
     EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))

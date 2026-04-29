@@ -7,6 +7,8 @@ env_variables:
   DB_NAME: "crm"
   DB_USER: "crm_app"
   DB_HOST: "/cloudsql/tmrrwcrm:asia-northeast3:tmrrw-crm-db"
+  USE_NCP_MAIL: "1"
+  EMAIL_FROM: "tmrrwcrm <noreply@tmrrwcrm.com>"
 
 beta_settings:
   cloud_sql_instances: tmrrwcrm:asia-northeast3:tmrrw-crm-db
