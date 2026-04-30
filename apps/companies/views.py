@@ -74,23 +74,28 @@ def assignment_settings(request):
 @login_required
 def team_settings(request):
     """
-    팀 관리 통합 페이지: 팀원 초대 + 자동 배정 (탭 UI).
-    POST 요청은 hidden 'form_type' 으로 분기:
+    팀 관리 통합 페이지: 멤버 + 팀원 초대 + 자동 배정 (탭 UI).
+    POST 요청은 hidden 'form_type' 으로 분기 (admin/owner 만):
       - invite: 초대 메일 발송
       - assignment: 자동 배정 설정 저장 (+ 비율 가중치 동시 저장)
+
+    조회 (GET) 는 회사 소속 모든 role (agent 포함) 허용.
+    POST 는 owner/admin 만.
     """
-    if request.user.role not in ("owner", "admin"):
-        return HttpResponseForbidden("관리 권한이 필요합니다.")
     if not request.company:
         return redirect("/app/")
 
+    is_manager = request.user.role in ("owner", "admin")
     company = request.company
     config, _ = AssignmentConfig.objects.get_or_create(company=company)
 
-    invite_form = InviteForm(company=company)
-    assignment_form = AssignmentConfigForm(instance=config)
+    invite_form = InviteForm(company=company) if is_manager else None
+    assignment_form = AssignmentConfigForm(instance=config) if is_manager else None
 
     if request.method == "POST":
+        if not is_manager:
+            return HttpResponseForbidden("관리 권한이 필요합니다.")
+
         form_type = request.POST.get("form_type", "")
 
         if form_type == "invite":
@@ -112,15 +117,21 @@ def team_settings(request):
             assignment_form = AssignmentConfigForm(request.POST, instance=config)
             if assignment_form.is_valid():
                 assignment_form.save()
-                # 가중치 동시 저장 — POST 의 weight_<user_id> 키 파싱
                 _save_agent_weights(company, request.POST)
                 messages.success(request, "자동 배정 설정 저장됨.")
                 return redirect(f"{reverse('team_settings')}#assignment")
 
-    invites = InviteToken.objects.filter(company=company).order_by("-created_at")[:50]
+    # 모든 role 이 보는 멤버 목록 (owner → admin → intake → agent 순으로 정렬)
+    role_order = {"owner": 0, "admin": 1, "intake": 2, "agent": 3}
+    members = list(
+        User.objects.filter(company=company).order_by("-is_active", "name", "login_id")
+    )
+    members.sort(key=lambda u: (not u.is_active, role_order.get(u.role, 99), (u.name or u.login_id or "").lower()))
+
+    invites = InviteToken.objects.filter(company=company).order_by("-created_at")[:50] if is_manager else None
     agents = User.objects.filter(
         company=company, role="agent", is_active=True,
-    ).order_by("name", "login_id")
+    ).order_by("name", "login_id") if is_manager else None
 
     return render(request, "app/team_settings.html", {
         "invite_form": invite_form,
@@ -128,6 +139,8 @@ def team_settings(request):
         "invites": invites,
         "agents": agents,
         "config": config,
+        "members": members,
+        "is_manager": is_manager,
     })
 
 
