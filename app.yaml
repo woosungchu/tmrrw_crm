@@ -23,7 +23,7 @@ handlers:
   secure: always
 
 automatic_scaling:
-  min_instances: 0
+  min_instances: 1   # cold start 제거. F1 24/7 가동 시 GCP free tier (28h/day) 안.
   max_instances: 2
   target_cpu_utilization: 0.65
 
